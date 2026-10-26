@@ -472,7 +472,7 @@ export function ViewBHorizontalPipeline() {
   const [resolvedTasks, setResolvedTasks] = useState<Record<string, "APROBADO" | "RECHAZADO">>({});
   const [actionBanner, setActionBanner] = useState<string | null>(null);
   const [bottomPanelMode, setBottomPanelMode] = useState<"REJECTION" | "NLP" | "HIDDEN">(
-    "REJECTION"
+    "HIDDEN"
   );
 
   const pendingCount = INITIAL_DECISION_CARDS.filter((c) => !resolvedTasks[c.id]).length;
@@ -492,7 +492,7 @@ export function ViewBHorizontalPipeline() {
   return (
     <div className="grid h-full min-h-0 w-full grid-cols-1 gap-3 lg:grid-cols-12">
       {/* CONTENEDOR IZQUIERDO (80% ANCHO): REACT FLOW PIPELINE */}
-      <div className="flex min-h-0 flex-col justify-between rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3.5 lg:col-span-9 xl:col-span-9">
+      <div className="relative flex min-h-0 flex-col justify-between rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3.5 lg:col-span-9 xl:col-span-9">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2.5">
           <div>
             <div className="flex items-center gap-2">
@@ -556,14 +556,14 @@ export function ViewBHorizontalPipeline() {
           </ReactFlowProvider>
         </div>
 
-        {/* PANEL INFERIOR DIRECTIVA V6: ANÁLISIS DE RECHAZO ("Waarom vallen ze af?") O LECTOR NLP EN VIVO */}
+        {/* DRAWER FLOTANTE DIRECTIVA V6: ANÁLISIS DE RECHAZO ("Waarom vallen ze af?") O LECTOR NLP EN VIVO */}
         {bottomPanelMode === "REJECTION" && (
-          <div className="mb-1.5 shrink-0">
+          <div className="absolute inset-x-3.5 bottom-14 z-30 max-h-[65%] overflow-y-auto rounded-lg border border-rose-500/40 bg-[#050609]/95 p-1 shadow-[0_-10px_35px_rgba(0,0,0,0.85)] backdrop-blur-md">
             <RejectionAnalysisPanel compact />
           </div>
         )}
         {bottomPanelMode === "NLP" && (
-          <div className="mb-1.5 shrink-0">
+          <div className="absolute inset-x-3.5 bottom-14 z-30 max-h-[65%] overflow-y-auto rounded-lg border border-[#4ade80]/40 bg-[#050609]/95 p-1 shadow-[0_-10px_35px_rgba(0,0,0,0.85)] backdrop-blur-md">
             <LiveNLPReader compact />
           </div>
         )}

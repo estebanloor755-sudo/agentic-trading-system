@@ -238,13 +238,13 @@ function BreinKernParticleSphere({ pulseSpeed = 1 }: { pulseSpeed?: number }) {
 
 export function ViewAParticleSphere() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
-  const [showNlpReader, setShowNlpReader] = useState<boolean>(true);
+  const [showNlpReader, setShowNlpReader] = useState<boolean>(false);
   const eqBars = [0.35, 0.85, 0.55, 0.95, 0.45, 0.75, 0.9, 0.4, 0.8, 0.6, 0.95, 0.5];
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col justify-between overflow-hidden rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3">
       {/* HEADER INTERNO */}
-      <div className="z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2">
+      <div className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee]" />
           <h2 className="font-mono text-xs font-bold tracking-wide text-slate-200">
@@ -267,19 +267,19 @@ export function ViewAParticleSphere() {
           <button
             type="button"
             onClick={() => setShowNlpReader((prev) => !prev)}
-            className={`rounded border px-2 py-0.5 font-mono text-[9px] font-bold transition ${
+            className={`rounded border px-2.5 py-0.5 font-mono text-[9.5px] font-bold transition ${
               showNlpReader
-                ? "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
-                : "border-[#1f222d] bg-[#030407] text-slate-400 hover:text-white"
+                ? "border-[#4ade80] bg-[#4ade80]/20 text-[#4ade80]"
+                : "border-[#eab308]/50 bg-[#eab308]/10 text-[#eab308] hover:bg-[#eab308]/20"
             }`}
           >
-            {showNlpReader ? "▼ Ocultar Lector NLP (HERMES)" : "▲ Abrir Lector NLP (HERMES)"}
+            {showNlpReader ? "✕ Cerrar Lector NLP (Ver Esfera 3D)" : "🧠 Abrir Lector NLP (HERMES)"}
           </button>
         </div>
       </div>
 
-      {/* ÁREA SUPERIOR (70% DEL ALTO DISPONIBLE): ENTRADAS + ESFERA 3D + SALIDAS */}
-      <div className="relative my-1.5 grid min-h-0 flex-grow basis-[68%] grid-cols-1 items-center gap-3 overflow-hidden lg:grid-cols-12">
+      {/* ÁREA CENTRAL (100% DEL ALTO DISPONIBLE PARA LA ESFERA 3D): ENTRADAS + ESFERA 3D + SALIDAS */}
+      <div className="relative my-1.5 grid min-h-0 flex-1 grid-cols-1 items-center gap-3 overflow-hidden lg:grid-cols-12">
         <svg
           viewBox="0 0 1000 500"
           preserveAspectRatio="none"
@@ -462,16 +462,16 @@ export function ViewAParticleSphere() {
         </div>
       </div>
 
-      {/* ÁREA INFERIOR (30% RÍGIDO CON OVERFLOW-Y-AUTO): LECTOR NLP EN VIVO (AGENTE HERMES) */}
+      {/* DRAWER FLOTANTE INFERIOR OPCIONAL: LECTOR NLP EN VIVO (NO APLASTA LA ESFERA 3D) */}
       {showNlpReader && (
-        <div className="z-20 mb-1.5 h-44 shrink-0 overflow-y-auto xl:h-48">
+        <div className="absolute inset-x-3 bottom-12 z-30 max-h-[55%] overflow-y-auto rounded-lg border border-[#4ade80]/40 bg-[#050609]/95 p-1 shadow-[0_-10px_35px_rgba(0,0,0,0.85)] backdrop-blur-md">
           <LiveNLPReader compact />
         </div>
       )}
 
-      {/* FOOTER INTERNO DE ACTIVIDAD */}
-      <div className="z-20 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#1f222d] bg-[#050609] px-3 py-2 font-mono text-[10px]">
-        <div className="flex items-center gap-3">
+      {/* FOOTER INTERNO DE ACTIVIDAD + RESUMEN NER EN LÍNEA */}
+      <div className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-[#1f222d] bg-[#050609] px-3 py-1.5 font-mono text-[10px]">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div
             aria-label="Ecualizador de actividad del modelo"
             className="flex h-4 items-end gap-[2px] rounded border border-[#1f222d] bg-[#0a0b10] px-1.5 py-0.5"
@@ -491,19 +491,35 @@ export function ViewAParticleSphere() {
           </div>
 
           <span className="font-bold uppercase tracking-wider text-slate-300">
-            ÚLTIMO CICLO DEL MOTOR
+            HERMES NER EN VIVO:
           </span>
-          <span className="text-slate-600">|</span>
           <span className="text-slate-400">
-            Ciclo #4,812 completado • <strong className="text-[#22d3ee]">arXiv:2610.09412</strong> analizado → 3 nuevas variantes en{" "}
-            <strong className="text-[#4ade80]">Reversión-Media NQ</strong>
+            &ldquo;...fade back to{" "}
+            <span className="rounded bg-[#4ade80] px-1 py-0.2 font-extrabold text-black">
+              VWAP
+            </span>{" "}
+            • entry is first{" "}
+            <span className="rounded bg-[#4ade80] px-1 py-0.2 font-extrabold text-black">
+              order block
+            </span>{" "}
+            + 15m{" "}
+            <span className="rounded bg-[#4ade80] px-1 py-0.2 font-extrabold text-black">
+              fair value gap
+            </span>
+            &rdquo;
           </span>
         </div>
 
         <div className="flex items-center gap-2 text-slate-500">
-          <span>Latencia Embedding: <strong className="text-slate-300">18ms</strong></span>
+          <button
+            type="button"
+            onClick={() => setShowNlpReader((prev) => !prev)}
+            className="text-[#22d3ee] underline hover:text-[#4ade80]"
+          >
+            {showNlpReader ? "Ocultar detalle NER" : "Ver paper completo ↗"}
+          </button>
           <span>•</span>
-          <span className="text-[#4ade80]">Escuchando nuevas fuentes...</span>
+          <span className="text-[#4ade80]">1,900 Nodos 3D Activos</span>
         </div>
       </div>
     </div>
