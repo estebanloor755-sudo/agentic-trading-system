@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   FileCode2,
+  ShieldAlert,
   Sparkles,
   X
 } from "lucide-react";
@@ -244,15 +245,25 @@ export interface ViewDSetupValidatorProps {
     decision: "APPROVED" | "REJECTED",
     notes?: string
   ) => boolean;
+  zeusAutonomous?: boolean;
+  onToggleZeusAutonomous?: (autonomous: boolean) => void;
 }
 
 export function ViewDSetupValidator({
-  onValidateSetup
+  onValidateSetup,
+  zeusAutonomous = true,
+  onToggleZeusAutonomous
 }: ViewDSetupValidatorProps = {}) {
   const datasets = useMemo(() => buildReplayDatasets(), []);
   const [selectedPatternId, setSelectedPatternId] = useState<string>("choch");
   const [selectedSessionId, setSelectedSessionId] = useState<string>("ny_sessie");
   const [sampleIndex, setSampleIndex] = useState<number>(0);
+
+  const [localAutonomous, setLocalAutonomous] = useState<boolean>(zeusAutonomous);
+  const isAutonomous =
+    onToggleZeusAutonomous !== undefined ? zeusAutonomous : localAutonomous;
+
+  const [zeusCountdown, setZeusCountdown] = useState<number>(3);
 
   const [exclusionNote, setExclusionNote] = useState<string>(
     "Operar únicamente en New York-sessie tras barrido de Lower Low"
@@ -281,10 +292,24 @@ export function ViewDSetupValidator({
   const currentDecisionKey = `${selectedPatternId}-${sampleIndex}`;
   const currentDecision = decisions[currentDecisionKey] ?? null;
 
-  function handleDecision(verdict: "CORRECTO" | "INCORRECTO") {
+  function setMode(autonomous: boolean) {
+    if (onToggleZeusAutonomous) {
+      onToggleZeusAutonomous(autonomous);
+    } else {
+      setLocalAutonomous(autonomous);
+    }
+    setZeusCountdown(3);
+  }
+
+  function handleDecision(verdict: "CORRECTO" | "INCORRECTO", byZeus = false) {
     const setupId = `${selectedPatternId.toUpperCase()}_NQ_${120 + sampleIndex + 1}`;
     const wsDecision = verdict === "CORRECTO" ? "APPROVED" : "REJECTED";
-    const sentViaWs = onValidateSetup?.(setupId, wsDecision, exclusionNote);
+    const actorTag = byZeus ? "ZEUS AUTONOMOUS CORE" : "SENTINEL HITL";
+    const sentViaWs = onValidateSetup?.(
+      setupId,
+      wsDecision,
+      `[${actorTag}] ${exclusionNote}`
+    );
 
     setDecisions((prev) => ({
       ...prev,
@@ -292,14 +317,34 @@ export function ViewDSetupValidator({
     }));
     setLastFeedback(
       verdict === "CORRECTO"
-        ? `✓ [SENTINEL] "${activePattern.name}" (#${sampleIndex + 1}/8) validado como CORRECTO (Klopt) ${
+        ? `⚡ [${actorTag}] "${activePattern.name}" (#${sampleIndex + 1}/8) APROBADO ${
             sentViaWs ? "→ WS :4100 ACK" : "→ Registrado"
           }`
-        : `✕ [SENTINEL] "${activePattern.name}" (#${sampleIndex + 1}/8) marcado como INCORRECTO ${
+        : `🛡️ [${actorTag}] "${activePattern.name}" (#${sampleIndex + 1}/8) VETADO (Divergencia ATHENA/ORION) ${
             sentViaWs ? "→ WS :4100 ACK" : "→ Registrado"
           }`
     );
   }
+
+  // Motor de arbitraje autónomo de ZEUS (3... 2... 1...)
+  useEffect(() => {
+    if (!isAutonomous) return;
+    const timer = setInterval(() => {
+      setZeusCountdown((prev) => {
+        if (prev <= 1) {
+          // ZEUS aprueba por consenso o aplica veto de seguridad en muestra #4 (simulando FOMC Hawkish de ATHENA)
+          const isVetoSample = sampleIndex === 3;
+          handleDecision(isVetoSample ? "INCORRECTO" : "CORRECTO", true);
+          setSampleIndex((idx) => (idx + 1) % datasets.length);
+          return 3;
+        }
+        return prev - 1;
+      });
+    }, 1100);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAutonomous, sampleIndex, selectedPatternId, datasets.length]);
 
   return (
     <div className="grid h-full min-h-0 w-full grid-cols-1 gap-2.5 lg:grid-cols-12">
@@ -647,39 +692,125 @@ export function ViewDSetupValidator({
           </div>
         </div>
 
-        {/* Bloque Inferior: Validación Human-in-the-Loop (JOUW "KLOPT") */}
+        {/* Bloque Inferior: Switch Auto-Pilot ZEUS vs Validación Human-in-the-Loop */}
         <div className="flex shrink-0 flex-col justify-between rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3">
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-[#eab308]" />
-                <h3 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-100">
-                  AUDITORÍA HUMANA (JOUW &ldquo;KLOPT&rdquo;)
-                </h3>
-              </div>
-              <span className="font-mono text-[9px] text-[#4ade80]">WS :4100</span>
+          {/* CONMUTADOR (TOGGLE SWITCH): [ HUMAN-IN-THE-LOOP (Manual) ] <---> [ ZEUS AUTONOMOUS CORE ] */}
+          <div className="mb-2.5">
+            <div className="mb-1 flex items-center justify-between font-mono text-[9px] text-slate-400">
+              <span className="uppercase tracking-wider">MODO DE GOBERNANZA:</span>
+              <span
+                className={
+                  isAutonomous
+                    ? "font-bold text-[#fbbf24]"
+                    : "font-bold text-[#4ade80]"
+                }
+              >
+                {isAutonomous ? "⚡ AUTO-PILOT ACTIVO" : "👤 COPILOTO MANUAL"}
+              </span>
             </div>
 
-            <p className="mt-1 text-[11px] leading-snug text-slate-300">
-              ¿El motor de Replay forma correctamente el{" "}
-              <strong className="text-[#4ade80]">{activePattern.name}</strong>?
-            </p>
+            <div className="grid grid-cols-2 gap-1 rounded-md border border-[#1f222d] bg-[#030407] p-1 font-mono text-[8.5px]">
+              <button
+                type="button"
+                onClick={() => setMode(false)}
+                className={`rounded px-1.5 py-1.5 font-bold transition ${
+                  !isAutonomous
+                    ? "border border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                [ HUMAN-IN-THE-LOOP (Manual) ]
+              </button>
 
-            <div className="mt-2">
-              <input
-                type="text"
-                value={exclusionNote}
-                onChange={(e) => setExclusionNote(e.target.value)}
-                className="w-full rounded border border-[#1f222d] bg-[#050608] px-2.5 py-1.5 font-mono text-[10px] text-slate-200 focus:border-[#22d3ee] focus:outline-none"
-                placeholder="Restricción de sesión o liquidez..."
-              />
+              <button
+                type="button"
+                onClick={() => setMode(true)}
+                className={`rounded px-1.5 py-1.5 font-bold transition ${
+                  isAutonomous
+                    ? "border border-[#fbbf24] bg-[#fbbf24]/20 text-[#fbbf24] shadow-[0_0_12px_rgba(251,191,36,0.28)]"
+                    : "text-slate-500 hover:text-[#fbbf24]"
+                }`}
+              >
+                [ ZEUS AUTONOMOUS CORE ]
+              </button>
             </div>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
+          {/* Consola rápida de decisión de ZEUS cuando está en modo autónomo */}
+          {isAutonomous ? (
+            <div className="mb-2.5 rounded-md border border-[#fbbf24]/50 bg-[#120e04] p-2.5 font-mono text-[10px]">
+              <div className="flex items-center justify-between border-b border-[#fbbf24]/25 pb-1">
+                <span className="flex items-center gap-1.5 font-extrabold text-[#fbbf24]">
+                  <ShieldAlert className="h-3.5 w-3.5 text-[#fbbf24]" />
+                  ZEUS // CRO &amp; PORTFOLIO MANAGER
+                </span>
+                <span className="animate-pulse rounded bg-[#fbbf24]/20 px-1.5 py-0.5 text-[8.5px] font-bold text-[#fbbf24]">
+                  SOBREESCRITURA AUTÓNOMA
+                </span>
+              </div>
+
+              <div className="mt-1.5 space-y-1 text-[9.5px] text-slate-300">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Consenso Sub-Agentes:</span>
+                  <span>
+                    <strong className="text-[#4ade80]">KRONOS OK</strong> •{" "}
+                    <strong className="text-[#22d3ee]">ORION OK</strong> •{" "}
+                    <strong className="text-[#d946ef]">
+                      {sampleIndex === 3 ? "ATHENA HAWKISH" : "ATHENA NEUTRAL"}
+                    </strong>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-0.5 text-[#fbbf24]">
+                  <span className="font-bold">
+                    {sampleIndex === 3
+                      ? `Vetando por riesgo FOMC en ${zeusCountdown}...`
+                      : `Aprobando en ${zeusCountdown}... ${Math.max(1, zeusCountdown - 1)}...`}
+                  </span>
+                  <span className="text-[9px] text-amber-300/80">
+                    Muestra #{sampleIndex + 1}/8
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-[#eab308]" />
+                  <h3 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-100">
+                    AUDITORÍA HUMANA (JOUW &ldquo;KLOPT&rdquo;)
+                  </h3>
+                </div>
+                <span className="font-mono text-[9px] text-[#4ade80]">WS :4100</span>
+              </div>
+
+              <p className="mt-1 text-[11px] leading-snug text-slate-300">
+                ¿El motor de Replay forma correctamente el{" "}
+                <strong className="text-[#4ade80]">{activePattern.name}</strong>?
+              </p>
+
+              <div className="mt-2">
+                <input
+                  type="text"
+                  value={exclusionNote}
+                  onChange={(e) => setExclusionNote(e.target.value)}
+                  className="w-full rounded border border-[#1f222d] bg-[#050608] px-2.5 py-1.5 font-mono text-[10px] text-slate-200 focus:border-[#22d3ee] focus:outline-none"
+                  placeholder="Restricción de sesión o liquidez..."
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Botones humanos (bloqueados con opacity-50 cuando ZEUS está activo) */}
+          <div
+            className={`mt-1 grid grid-cols-2 gap-2 transition-opacity ${
+              isAutonomous ? "pointer-events-none opacity-50" : "opacity-100"
+            }`}
+          >
             <button
               type="button"
-              onClick={() => handleDecision("CORRECTO")}
+              disabled={isAutonomous}
+              onClick={() => handleDecision("CORRECTO", false)}
               className="flex items-center justify-center gap-1.5 rounded-md border border-[#4ade80] bg-[#050608] px-2.5 py-2 font-mono text-[10px] font-bold text-[#4ade80] transition hover:bg-[#4ade80]/15 hover:shadow-[0_0_16px_rgba(74,222,128,0.28)]"
             >
               <Check className="h-3.5 w-3.5" />
@@ -688,16 +819,17 @@ export function ViewDSetupValidator({
 
             <button
               type="button"
-              onClick={() => handleDecision("INCORRECTO")}
+              disabled={isAutonomous}
+              onClick={() => handleDecision("INCORRECTO", false)}
               className="flex items-center justify-center gap-1.5 rounded-md border border-[#334155] bg-[#050608] px-2.5 py-2 font-mono text-[10px] font-bold text-slate-300 transition hover:border-slate-400 hover:bg-slate-800/50"
             >
               <X className="h-3.5 w-3.5 text-slate-400" />
-              <span>[Incorrecto]</span>
+              <span>[Incorrecto (Klopt niet)]</span>
             </button>
           </div>
 
           {lastFeedback && (
-            <div className="mt-2 truncate rounded border border-[#1f222d] bg-[#050608] px-2 py-1 font-mono text-[9px] text-[#22d3ee]">
+            <div className="mt-2 truncate rounded border border-[#1f222d] bg-[#050608] px-2 py-1 font-mono text-[9px] text-[#fbbf24]">
               {lastFeedback}
             </div>
           )}

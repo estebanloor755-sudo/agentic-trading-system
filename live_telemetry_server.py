@@ -50,6 +50,9 @@ REGIMES = [
 ]
 
 AGENT_EVENTS = [
+    ("ZEUS", "ZEUS: Veto de seguridad activado. Divergencia entre ATHENA (Hawkish) y ORION (Bullish). Operaciones pausadas.", "gold"),
+    ("ZEUS", "ZEUS: Consenso positivo alcanzado. Autorizando paso a Produccion (CME Live) para 'Trend-volger ES'.", "gold"),
+    ("ZEUS", "ZEUS: Limite de Drawdown diario al 80%. Reduciendo apalancamiento a la mitad (Risk-Off).", "gold"),
     ("ATHENA", "ATHENA: Tono 'Hawkish' detectado en actas del FOMC. Bloqueando estrategias de Mean Reversion para NQ.", "purple"),
     ("ATHENA", "ATHENA: Rumor de shock geopolitico en Medio Oriente. Aumentando ponderacion en setups de liquidez de XAU/USD.", "purple"),
     ("ATHENA", "ATHENA: Divergencia cualitativa. Precio subiendo, pero sentimiento de flujo institucional negativo (-0.65). Precaucion.", "purple"),
@@ -57,7 +60,6 @@ AGENT_EVENTS = [
     ("ORION", "[Agente Cuantitativo] Evaluando riesgo Reversion-Media NQ v4... {pct}% | Sharpe IS: 2.94 | Sortino: 3.48 | DD < 4.5%", "cyan"),
     ("HERMES", "[Agente Investigador NLP] Paper arXiv '2610.{doc}' analizado -> NER: 'VWAP', 'order block' | FinBERT +{score}", "mustard"),
     ("CORTEX", "[Agente Codificador] Logica compilada a Python vectorizado NumPy (AST limpio, 0 lookahead bias) en 12ms", "cyan"),
-    ("ORION", "[Filtro Cuantitativo] Descartada variante: Max Drawdown > Limite Institucional (4.5%) | Falla prueba OOS", "mustard"),
 ]
 
 CONNECTED_CLIENTS: set[Any] = set()

@@ -41,6 +41,7 @@ export interface SpaghettiCurve {
 }
 
 export type SubAgentId =
+  | "ZEUS"
   | "KRONOS"
   | "ORION"
   | "HERMES"
@@ -59,6 +60,16 @@ export interface SubAgentSpec {
 }
 
 export const SUB_AGENT_SPECS: Record<SubAgentId, SubAgentSpec> = {
+  ZEUS: {
+    id: "ZEUS",
+    roleTitle: "Director de Operaciones y CRO",
+    shortTag: "Portfolio Manager / Veto",
+    specialty:
+      "Director Supremo y Chief Risk Officer. Evalúa el consenso entre KRONOS, ORION y ATHENA, aplica filtros duros y autoriza o veta la ejecución en vivo.",
+    accentColor: "#fbbf24",
+    badgeClass:
+      "border-[#fbbf24] bg-[#fbbf24]/20 text-[#fbbf24] shadow-[0_0_14px_rgba(251,191,36,0.35)]"
+  },
   KRONOS: {
     id: "KRONOS",
     roleTitle: "Agente Técnico",
@@ -130,7 +141,7 @@ export interface AgentLogEntry {
   time: string;
   agent: SubAgentId;
   message: string;
-  level: "green" | "cyan" | "mustard" | "purple" | "muted";
+  level: "gold" | "green" | "cyan" | "mustard" | "purple" | "muted";
 }
 
 export const FUNNEL_KPIS: FunnelKpi[] = [
@@ -510,6 +521,14 @@ export function generateSpaghettiDataset(totalSteps = 260, splitIndex = 180): Sp
 
 export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
   {
+    id: "log-0",
+    time: "17:54:10.50",
+    agent: "ZEUS",
+    message:
+      "ZEUS: Veto de seguridad activado. Divergencia entre ATHENA (Hawkish) y ORION (Bullish). Operaciones pausadas.",
+    level: "gold"
+  },
+  {
     id: "log-1",
     time: "17:54:12.04",
     agent: "ATHENA",
@@ -528,26 +547,26 @@ export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
   {
     id: "log-3",
     time: "17:54:16.45",
+    agent: "ZEUS",
+    message:
+      "ZEUS: Consenso positivo alcanzado. Autorizando paso a Producción (CME Live) para 'Trend-volger ES'.",
+    level: "gold"
+  },
+  {
+    id: "log-4",
+    time: "17:54:18.31",
     agent: "ATHENA",
     message:
       "ATHENA: Rumor de shock geopolítico en Medio Oriente. Aumentando ponderación en setups de liquidez de XAU/USD.",
     level: "purple"
   },
   {
-    id: "log-4",
-    time: "17:54:18.31",
+    id: "log-5",
+    time: "17:54:20.12",
     agent: "HERMES",
     message:
       "[NLP & ArXiv] Paper '2610.09412v1' procesado -> Entidades NER extraídas: 'VWAP', 'order block', 'fair value gap' (FinBERT +0.84)",
     level: "mustard"
-  },
-  {
-    id: "log-5",
-    time: "17:54:20.12",
-    agent: "CORTEX",
-    message:
-      "[Codificador AST] Hipótesis transformada en script Python vectorizado NumPy (0 bucles for) -> compilado en 14ms",
-    level: "cyan"
   },
   {
     id: "log-6",
@@ -559,10 +578,18 @@ export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
   },
   {
     id: "log-7",
-    time: "17:54:25.10",
+    time: "17:54:23.40",
     agent: "ATHENA",
     message:
       "ATHENA: Divergencia cualitativa. Precio subiendo, pero sentimiento de flujo institucional negativo (-0.65). Precaución.",
     level: "purple"
+  },
+  {
+    id: "log-8",
+    time: "17:54:25.10",
+    agent: "ZEUS",
+    message:
+      "ZEUS: Límite de Drawdown diario al 80%. Reduciendo apalancamiento a la mitad (Risk-Off).",
+    level: "gold"
   }
 ];

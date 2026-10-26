@@ -82,6 +82,7 @@ export default function TradeBreinMasterApp() {
   const [logsExpanded, setLogsExpanded] = useState<boolean>(false);
   const [logsPaused, setLogsPaused] = useState<boolean>(false);
   const [agentFilter, setAgentFilter] = useState<"ALL" | SubAgentId>("ALL");
+  const [zeusAutonomous, setZeusAutonomous] = useState<boolean>(true);
 
   // Estado para el Auditor de IA Externa
   const [showAuditModal, setShowAuditModal] = useState<boolean>(false);
@@ -333,10 +334,11 @@ export default function TradeBreinMasterApp() {
           <div className="hidden rounded-md border border-[#1f222d] bg-[#050609] p-2 xl:block">
             <div className="mb-1.5 flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-wider text-slate-400">
               <span>Flota Sub-Agentes</span>
-              <span className="text-[#4ade80]">5 Activos</span>
+              <span className="text-[#fbbf24]">ZEUS + 5</span>
             </div>
             <div className="space-y-1 font-mono text-[8.5px]">
-              {(["KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const).map((agId) => {
+              {(["ZEUS", "KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const).map(
+                (agId) => {
                 const spec = SUB_AGENT_SPECS[agId];
                 const isFiltered = agentFilter === agId;
                 return (
@@ -417,6 +419,29 @@ export default function TradeBreinMasterApp() {
               Régimen HMM:{" "}
               <strong className="text-[#4ade80]">{lastTick.hmm_regime}</strong>
             </span>
+
+            {/* Badge Global Directiva V9: MODO AUTÓNOMO: ZEUS ACTIVO en color oro apagado */}
+            <button
+              type="button"
+              onClick={() => setZeusAutonomous((prev) => !prev)}
+              className={`hidden items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] font-bold transition md:flex ${
+                zeusAutonomous
+                  ? "border-[#fbbf24]/50 bg-[#fbbf24]/15 text-[#fbbf24] shadow-[0_0_12px_rgba(251,191,36,0.2)]"
+                  : "border-[#1f222d] bg-[#030407] text-slate-400 hover:text-[#fbbf24]"
+              }`}
+              title="Conmutar entre Modo Autónomo (ZEUS) y Modo Copiloto Manual (Human-in-the-Loop)"
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  zeusAutonomous ? "animate-pulse bg-[#fbbf24]" : "bg-slate-500"
+                }`}
+              />
+              <span>
+                {zeusAutonomous
+                  ? "MODO AUTÓNOMO: ZEUS ACTIVO"
+                  : "MODO COPILOTO: HITL MANUAL"}
+              </span>
+            </button>
 
             <span className="hidden rounded border border-[#1f222d] bg-[#030407] px-2 py-0.5 font-mono text-[10px] text-slate-400 lg:inline">
               FinBERT:{" "}
@@ -552,7 +577,11 @@ export default function TradeBreinMasterApp() {
           {activeView === "VIEW_A" && <ViewAParticleSphere />}
           {activeView === "VIEW_B" && <ViewBHorizontalPipeline />}
           {activeView === "VIEW_D" && (
-            <ViewDSetupValidator onValidateSetup={sendHumanValidation} />
+            <ViewDSetupValidator
+              onValidateSetup={sendHumanValidation}
+              zeusAutonomous={zeusAutonomous}
+              onToggleZeusAutonomous={setZeusAutonomous}
+            />
           )}
           {activeView === "VIEW_E" && (
             <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-[#1f222d] bg-[#0a0b10]">
@@ -611,7 +640,9 @@ export default function TradeBreinMasterApp() {
               </span>
               <span
                 className={`truncate ${
-                  latestLog.agent === "ATHENA" || latestLog.level === "purple"
+                  latestLog.agent === "ZEUS" || latestLog.level === "gold"
+                    ? "font-extrabold text-[#fbbf24]"
+                    : latestLog.agent === "ATHENA" || latestLog.level === "purple"
                     ? "font-semibold text-[#d946ef]"
                     : "text-slate-300"
                 }`}
@@ -621,31 +652,35 @@ export default function TradeBreinMasterApp() {
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
-              {/* Filtros rápidos por Sub-Agente (Directivas V6 y V8 con ATHENA) */}
+              {/* Filtros rápidos por Sub-Agente (Directivas V6, V8 y V9 con ZEUS y ATHENA) */}
               <div className="hidden items-center gap-1 lg:flex">
-                {(["ALL", "KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const).map(
-                  (ag) => (
-                    <button
-                      key={ag}
-                      type="button"
-                      onClick={() => {
-                        setAgentFilter(ag);
-                        if (ag !== "ALL") setLogsExpanded(true);
-                      }}
-                      className={`rounded border px-1.5 py-0.5 text-[9px] font-bold transition ${
-                        agentFilter === ag
-                          ? ag === "ATHENA"
-                            ? "border-[#a855f7] bg-[#a855f7]/20 text-[#d946ef]"
-                            : "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                {(
+                  ["ALL", "ZEUS", "KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const
+                ).map((ag) => (
+                  <button
+                    key={ag}
+                    type="button"
+                    onClick={() => {
+                      setAgentFilter(ag);
+                      if (ag !== "ALL") setLogsExpanded(true);
+                    }}
+                    className={`rounded border px-1.5 py-0.5 text-[9px] font-bold transition ${
+                      agentFilter === ag
+                        ? ag === "ZEUS"
+                          ? "border-[#fbbf24] bg-[#fbbf24]/25 text-[#fbbf24] shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                           : ag === "ATHENA"
-                          ? "border-[#a855f7]/40 bg-[#a855f7]/10 text-[#d946ef] hover:bg-[#a855f7]/20"
-                          : "border-[#1f222d] bg-[#0a0b10] text-slate-500 hover:text-slate-200"
-                      }`}
-                    >
-                      {ag === "ALL" ? "TODOS" : ag}
-                    </button>
-                  )
-                )}
+                          ? "border-[#a855f7] bg-[#a855f7]/20 text-[#d946ef]"
+                          : "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                        : ag === "ZEUS"
+                        ? "border-[#fbbf24]/50 bg-[#fbbf24]/10 text-[#fbbf24] hover:bg-[#fbbf24]/20"
+                        : ag === "ATHENA"
+                        ? "border-[#a855f7]/40 bg-[#a855f7]/10 text-[#d946ef] hover:bg-[#a855f7]/20"
+                        : "border-[#1f222d] bg-[#0a0b10] text-slate-500 hover:text-slate-200"
+                    }`}
+                  >
+                    {ag === "ALL" ? "TODOS" : ag}
+                  </button>
+                ))}
               </div>
 
               <button
@@ -702,7 +737,9 @@ export default function TradeBreinMasterApp() {
                       </span>
                       <span
                         className={
-                          entry.agent === "ATHENA" || entry.level === "purple"
+                          entry.agent === "ZEUS" || entry.level === "gold"
+                            ? "font-extrabold text-[#fbbf24]"
+                            : entry.agent === "ATHENA" || entry.level === "purple"
                             ? "font-semibold text-[#d946ef]"
                             : "text-slate-300"
                         }
