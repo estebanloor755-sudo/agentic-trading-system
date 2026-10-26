@@ -27,12 +27,27 @@ export interface IncomingLogPayload {
   tone: "gold" | "green" | "cyan" | "mustard" | "purple" | "muted";
 }
 
+export interface Level2MarketData {
+  symbol: string;
+  timestamp: string;
+  tick_price: number;
+  tick_volume: number;
+  bid: number;
+  ask: number;
+  volume_delta: number;
+  cumulative_delta: number;
+  dom_imbalance_ratio: number;
+  ticks_received: number;
+  zmq_connected: boolean;
+}
+
 export interface SystemTickPayload {
   type: "SYSTEM_TICK";
   timestamp: string;
   hmm_regime: string;
   finbert_score: number;
   funnel: FunnelTelemetry;
+  l2_market_data?: Level2MarketData;
   latest_log?: IncomingLogPayload;
 }
 
