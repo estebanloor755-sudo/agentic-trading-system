@@ -1,0 +1,111 @@
+//@version=5
+strategy("BOT ORB INSTITUCIONAL 25K (Wall Street Cash)", 
+         overlay=true, 
+         initial_capital=25000, 
+         default_qty_type=strategy.fixed, 
+         default_qty_value=2, 
+         commission_type=strategy.commission.cash_per_contract, 
+         commission_value=0.82, 
+         slippage=1, 
+         currency=currency.USD)
+
+// ==============================================================================
+// 1. REGLAS DE CUENTA DE FONDEO (MYFUNDEDFUTURES 25K BUILDER)
+// ==============================================================================
+grp_prop   = "1. Reglas de Fondeo ($25k Builder Plan)"
+stopPts    = input.float(28.0,    "Stop Loss (Puntos)", step=2.0, group=grp_prop, tooltip="28 pts = $56 USD en 2 MNQ")
+t1Pts      = input.float(30.0,    "Target 1: Cobro Seguro (+30 pts = +$60 USD)", step=2.0, group=grp_prop)
+t2Pts      = input.float(70.0,    "Target 2: Expansión (+70 pts = +$140 USD)", step=5.0, group=grp_prop)
+
+// ==============================================================================
+// 2. HORARIOS DE APERTURA INSTITUCIONAL (WALL STREET CASH)
+// ==============================================================================
+grp_time   = "2. Horarios Wall Street (NY Time)"
+orbSession = input.session("0930-0945:23456", "Vela Apertura ORB (15M)", group=grp_time)
+entrySess  = input.session("0945-1100:23456", "Ventana de Entrada", group=grp_time)
+eodSession = input.session("1545-1600:23456", "Cierre Forzoso EOD", group=grp_time)
+
+// Indicadores
+ema200     = ta.ema(close, 200)
+
+// Estados de Sesión
+isOrbBar   = not na(time(timeframe.period, orbSession, "America/New_York"))
+inEntry    = not na(time(timeframe.period, entrySess, "America/New_York"))
+isEodBar   = not na(time(timeframe.period, eodSession, "America/New_York"))
+
+var float orbHigh = na
+var float orbLow  = na
+var bool  orbFormed = false
+var int   tradesToday = 0
+var int   lastDay = na
+
+currentDay = dayofmonth(time("America/New_York"))
+
+if currentDay != lastDay
+    lastDay := currentDay
+    orbHigh := na
+    orbLow  := na
+    orbFormed := false
+    tradesToday := 0
+
+if isOrbBar
+    orbHigh := high
+    orbLow  := low
+    orbFormed := true
+
+// Condiciones de Ruptura
+longCond  = orbFormed and inEntry and (tradesToday < 1) and (close > orbHigh) and (close > ema200)
+shortCond = orbFormed and inEntry and (tradesToday < 1) and (close < orbLow) and (close < ema200)
+
+// Gestión de Posiciones con Break-Even
+var float entryPrice = na
+var bool  t1Reached  = false
+var bool  isLong     = false
+var bool  isShort    = false
+
+inPos = strategy.position_size != 0
+
+if not inPos
+    entryPrice := na
+    t1Reached  := false
+    isLong     := false
+    isShort    := false
+
+if not inPos and (tradesToday < 1)
+    if longCond
+        entryPrice := close
+        t1Reached  := false
+        isLong     := true
+        isShort    := false
+        tradesToday += 1
+        strategy.entry("ORB_Long_C1", strategy.long, qty=1, comment="Buy_C1_Target1")
+        strategy.entry("ORB_Long_C2", strategy.long, qty=1, comment="Buy_C2_Runner")
+    else if shortCond
+        entryPrice := close
+        t1Reached  := false
+        isLong     := false
+        isShort    := true
+        tradesToday += 1
+        strategy.entry("ORB_Short_C1", strategy.short, qty=1, comment="Sell_C1_Target1")
+        strategy.entry("ORB_Short_C2", strategy.short, qty=1, comment="Sell_C2_Runner")
+
+if inPos
+    curSl = isLong ? (t1Reached ? (entryPrice + 0.50) : (entryPrice - stopPts)) : (t1Reached ? (entryPrice - 0.50) : (entryPrice + stopPts))
+    
+    if isLong
+        if not t1Reached and high >= (entryPrice + t1Pts)
+            t1Reached := true
+        strategy.exit("Exit_C1", from_entry="ORB_Long_C1", limit=entryPrice + t1Pts, stop=curSl)
+        strategy.exit("Exit_C2", from_entry="ORB_Long_C2", limit=entryPrice + t2Pts, stop=curSl)
+    else if isShort
+        if not t1Reached and low <= (entryPrice - t1Pts)
+            t1Reached := true
+        strategy.exit("Exit_C1", from_entry="ORB_Short_C1", limit=entryPrice - t1Pts, stop=curSl)
+        strategy.exit("Exit_C2", from_entry="ORB_Short_C2", limit=entryPrice - t2Pts, stop=curSl)
+        
+    if isEodBar
+        strategy.close_all(comment="EOD_Flat")
+
+plot(orbHigh, "ORB High", color=color.green, style=plot.style_linebr, linewidth=2)
+plot(orbLow,  "ORB Low",  color=color.red,   style=plot.style_linebr, linewidth=2)
+plot(ema200,  "EMA 200",  color=color.orange, linewidth=2)

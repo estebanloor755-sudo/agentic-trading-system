@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  quant-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quant-etl-supabase
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./outputs:/app/outputs
+      - ./Data/cache:/app/Data/cache
+    environment:
+      - PYTHONUNBUFFERED=1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"

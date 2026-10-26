@@ -1,0 +1,3599 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Sistema Cuantitativo NQ en Tiempo Real ΓÇö Vercel + Supabase</title>
+<!-- Supabase JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Chart.js para renderizado din├ímico en Vercel -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Configuraci├│n de Supabase para Vercel -->
+<script src="config.js"></script>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111827;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --long: #10b981;
+    --short: #ef4444;
+    --neutral: #94a3b8;
+    --cyan: #38bdf8;
+    --orange: #f97316;
+    --gold: #facc15;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, monospace;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+  .topbar {
+    background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+    border-bottom: 2px solid var(--border);
+    padding: 5px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+  .brand-title { font-size: 14px; font-weight: 800; color: var(--cyan); letter-spacing: 0.4px; }
+  .brand-sub { font-size: 10.5px; color: var(--muted); }
+  .top-kpis { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .kpi-pill {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    text-align: right;
+  }
+  .kpi-pill .lbl { font-size: 8.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .kpi-pill .val { font-size: 11.5px; font-weight: 800; color: var(--text); }
+  .kpi-pill-range {
+    background: #111827;
+    border: 1px solid #0284c7;
+    border-radius: 5px;
+    padding: 3px 8px;
+    text-align: left;
+  }
+  .kpi-pill-range .lbl { font-size: 8.5px; color: var(--cyan); text-transform: uppercase; font-weight: 800; }
+  .kpi-pill-range .val { font-size: 11px; font-weight: 700; color: #f8fafc; font-family: monospace; }
+  
+  /* Scrollbars estilizados */
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-track { background: #0b1120; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* RELOJ DUAL INSTITUCIONAL & SESI├ôN */
+  .market-clock-card {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 4px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  }
+  .clock-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+    flex-wrap: wrap;
+  }
+  .clock-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .clock-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .clock-digits {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .clock-ny .clock-digits {
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  }
+  .clock-local .clock-digits {
+    color: #e2e8f0;
+  }
+  .clock-divider {
+    color: #334155;
+    font-size: 12px;
+  }
+  .session-badge {
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .session-badge-rth {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+    border: 1px solid #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  .session-badge-cme {
+    background: rgba(56, 189, 248, 0.22);
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+  }
+  .session-badge-closed {
+    background: rgba(245, 158, 11, 0.18);
+    color: #facc15;
+    border: 1px solid #f59e0b;
+  }
+  .clock-market-schedule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: #64748b;
+    flex-wrap: wrap;
+  }
+  .sched-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .sched-bullet {
+    color: #334155;
+  }
+
+  /* Estados del Watchdog de Latencia */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+  }
+  .status-connected {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid #10b981;
+  }
+  .status-waiting {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid #f59e0b;
+  }
+  .status-history {
+    background: rgba(245, 158, 11, 0.22);
+    color: #facc15;
+    border: 1px solid #facc15;
+  }
+  .status-alert-pulsing {
+    background: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border: 1px solid #ef4444;
+    animation: pulse-red 1.2s infinite ease-in-out;
+  }
+  @keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75); }
+    70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+
+  .btn-cfg, .btn-logout, .btn-center-spot {
+    background: #1e293b;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 700;
+    transition: background 0.15s;
+  }
+  .btn-cfg:hover { background: #334155; color: var(--cyan); }
+  .btn-logout:hover { background: #7f1d1d; color: #fca5a5; border-color: #ef4444; }
+  .btn-center-spot {
+    background: #0284c7;
+    color: #ffffff;
+    border: 1px solid #38bdf8;
+    margin-left: 8px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .btn-center-spot:hover { background: #0369a1; }
+
+  .user-badge {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tabs-bar {
+    display: flex;
+    background: #0f172a;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 12.8px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(56, 189, 248, 0.08); }
+  .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); background: rgba(56, 189, 248, 0.12); }
+  .page { display: none; padding: 18px 20px 40px; max-width: 1840px; margin: 0 auto; }
+  .page.active { display: block; }
+  
+  /* Tarjetas de Decisi├│n Cuantitativa */
+  .decision-banner {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 12px 0 16px;
+    border: 1px solid var(--border);
+  }
+  .decision-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .decision-module { font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.6px; }
+  .decision-signal { font-size: 16.5px; font-weight: 900; margin-top: 2px; }
+  .decision-action { margin-top: 7px; font-size: 13.5px; color: #ffffff; }
+  .decision-metrics { margin-top: 4px; font-size: 12px; color: #cbd5e1; }
+  
+  .exec-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .exec-card {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
+  .exec-card-title {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .exec-trigger .exec-card-title { color: var(--cyan); }
+  .exec-stop .exec-card-title { color: #f87171; }
+  .exec-target .exec-card-title { color: #34d399; }
+  .exec-card-body {
+    font-size: 12.2px;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.35;
+  }
+
+  .section-hdr {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin: 16px 0 8px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  table.quant-table { width: 100%; border-collapse: collapse; font-size: 12.2px; white-space: nowrap; }
+  table.quant-table th {
+    background: #1e293b;
+    color: var(--cyan);
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 800;
+  }
+  table.quant-table td {
+    padding: 7.5px 12px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.55);
+  }
+  table.quant-table tr:hover { background: rgba(56, 189, 248, 0.08); }
+
+  /* WIDGET CENTRAL: SEM├üFORO MAESTRO DE R├ëGIMEN */
+  .regime-card {
+    background: #090d16;
+    border: 1px solid #0284c7;
+    border-radius: 6px;
+    padding: 4px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    min-width: 200px;
+  }
+  .regime-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .regime-val {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+    margin-top: 1px;
+    color: #38bdf8;
+    white-space: nowrap;
+  }
+
+  /* TOOLTIPS DID├üCTICOS (Γôÿ) */
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.2);
+    color: var(--cyan);
+    font-size: 10px;
+    font-weight: 800;
+    cursor: help;
+    margin-left: 4px;
+    position: relative;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+  }
+  .tooltip-icon:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    border: 1px solid var(--cyan);
+    color: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: normal;
+    min-width: 220px;
+    max-width: 320px;
+    z-index: 99999;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+    pointer-events: none;
+  }
+
+  /* ==============================================================================
+     ESTACI├ôN MODULAR WORKSPACE (ESTILO BLOOMBERG LAUNCHPAD)
+     ============================================================================== */
+  .app-viewport {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* BARRA DE COMANDOS (TRIGGER EN TOPBAR) */
+  .btn-cmd-palette {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #0f172a;
+    border: 1px solid #0284c7;
+    color: #e2e8f0;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 12px rgba(2, 132, 199, 0.2);
+  }
+  .btn-cmd-palette:hover {
+    background: #1e293b;
+    border-color: var(--cyan);
+    color: var(--cyan);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+  }
+  .cmd-shortcut {
+    background: #1e293b;
+    color: var(--cyan);
+    border: 1px solid #334155;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  /* BOT├ôN MUTE ALERTAS */
+  .btn-alerts-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    color: var(--long);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-alerts-toggle:hover {
+    background: #1e293b;
+  }
+  .btn-alerts-toggle.muted {
+    color: var(--muted);
+    border-color: #475569;
+  }
+  .status-led-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: inline-block;
+    box-shadow: 0 0 6px #10b981;
+    flex-shrink: 0;
+  }
+  .btn-alerts-toggle.muted .status-led-dot {
+    background: #64748b;
+    box-shadow: none;
+  }
+
+  /* TICKER TAPE MACROECON├ôMICO (BLOOMBERG MARQUEE) */
+  .macro-ticker-tape {
+    display: flex;
+    align-items: center;
+    background: #060a14;
+    border-bottom: 1px solid var(--border);
+    height: 28px;
+    overflow: hidden;
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+    font-size: 11px;
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+  }
+  .ticker-label {
+    background: #ff8c00;
+    color: #050b14;
+    font-weight: 900;
+    padding: 0 12px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.6px;
+    font-size: 10px;
+    flex-shrink: 0;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.6);
+    z-index: 2;
+  }
+  .ticker-track {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+  }
+  .ticker-content {
+    display: inline-block;
+    white-space: nowrap;
+    animation: tickerTapeScroll 50s linear infinite;
+  }
+  .ticker-track:hover .ticker-content {
+    animation-play-state: paused;
+  }
+  @keyframes tickerTapeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-right: 38px;
+    color: #cbd5e1;
+    font-weight: 600;
+  }
+  .ticker-tag {
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .ticker-tag.red { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid #ef4444; }
+  .ticker-tag.yellow { background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid #f59e0b; }
+  .ticker-tag.green { background: rgba(16, 185, 129, 0.25); color: #34d399; border: 1px solid #10b981; }
+  .ticker-tag.cyan { background: rgba(56, 189, 248, 0.25); color: #38bdf8; border: 1px solid #0284c7; }
+  .ticker-tag.gold { background: rgba(250, 204, 21, 0.25); color: #facc15; border: 1px solid #eab308; }
+  .ticker-tag.purple { background: rgba(168, 85, 247, 0.25); color: #d8b4fe; border: 1px solid #a855f7; }
+
+  /* ESTACI├ôN DE TRABAJO MULTIPANEL (100% HEIGHT VIEWPORT) */
+  #dashboard-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .workspace-station {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .workspace-left-analytics {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 16px 20px;
+    min-width: 0;
+    box-sizing: border-box;
+    overscroll-behavior: contain;
+  }
+  .workspace-right-execution {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #080d1a;
+    border-left: 2px solid var(--border);
+    padding: 8px 10px 10px;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
+  }
+
+  /* BARRA DE HERRAMIENTAS ANALYTICS */
+  .analytics-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .analytics-tabs-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .btn-view-mode {
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-view-mode:hover {
+    background: rgba(56, 189, 248, 0.3);
+  }
+  .btn-view-mode.active {
+    background: #0284c7;
+    color: #ffffff;
+  }
+
+  /* CABINA DE EJECUCI├ôN HUD STICKY */
+  .exec-hud-header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .exec-hud-title {
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pulse-indicator {
+    color: var(--long);
+    font-size: 12px;
+    animation: blinkGlow 1.5s infinite ease-in-out;
+  }
+  @keyframes blinkGlow {
+    0%, 100% { opacity: 1; text-shadow: 0 0 8px #10b981; }
+    50% { opacity: 0.3; text-shadow: none; }
+  }
+  .exec-side-decision {
+    flex-shrink: 0;
+    margin-bottom: 6px;
+  }
+  .exec-side-table-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    box-sizing: border-box;
+    overscroll-behavior: contain;
+  }
+  .exec-side-table-wrap::-webkit-scrollbar,
+  .workspace-left-analytics::-webkit-scrollbar {
+    width: 7px;
+  }
+  .exec-side-table-wrap::-webkit-scrollbar-track,
+  .workspace-left-analytics::-webkit-scrollbar-track {
+    background: #090d16;
+  }
+  .exec-side-table-wrap::-webkit-scrollbar-thumb,
+  .workspace-left-analytics::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  .exec-side-table-wrap::-webkit-scrollbar-thumb:hover,
+  .workspace-left-analytics::-webkit-scrollbar-thumb:hover {
+    background: #0284c7;
+  }
+  #tbl-exec-side {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #tbl-exec-side th {
+    padding: 5px 8px;
+    font-size: 10.5px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #1e293b;
+    border-bottom: 2px solid var(--border);
+  }
+  #tbl-exec-side td {
+    padding: 4px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  /* BOT├ôN AUTO-CENTRAR DOM LADDER */
+  .btn-auto-follow {
+    background: #0f172a;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-auto-follow:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+  .btn-auto-follow.active {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--long);
+    color: var(--long);
+  }
+
+  /* BARRA TAPE HUD BAJO HEADER DOM */
+  .dom-tape-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0b1329;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-family: monospace;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .tape-item {
+    color: var(--muted);
+  }
+  .tape-item strong {
+    color: #e2e8f0;
+  }
+
+  /* FLASH ANIMATION EN TICK DEL DOM LADDER */
+  @keyframes tickFlashUp {
+    0% { background-color: rgba(16, 185, 129, 0.6) !important; color: #ffffff !important; }
+    100% { background-color: rgba(56, 189, 248, 0.18) !important; }
+  }
+  @keyframes tickFlashDown {
+    0% { background-color: rgba(239, 68, 68, 0.6) !important; color: #ffffff !important; }
+    100% { background-color: rgba(56, 189, 248, 0.18) !important; }
+  }
+  .tick-flash-up {
+    animation: tickFlashUp 0.8s cubic-bezier(0.1, 0.9, 0.2, 1);
+  }
+  .tick-flash-down {
+    animation: tickFlashDown 0.8s cubic-bezier(0.1, 0.9, 0.2, 1);
+  }
+
+  .dom-spot-row {
+    background: rgba(56, 189, 248, 0.18) !important;
+    border-top: 2px solid var(--cyan) !important;
+    border-bottom: 2px solid var(--cyan) !important;
+    font-weight: 900 !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  }
+
+  /* MODAL COMMAND PALETTE (CTRL + K) */
+  .cmd-palette-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.78);
+    backdrop-filter: blur(6px);
+    z-index: 999999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 12vh;
+    animation: fadeInModal 0.15s ease-out;
+  }
+  @keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .cmd-palette-card {
+    background: #0d1527;
+    border: 1px solid #0284c7;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 640px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 25px rgba(2, 132, 199, 0.35);
+    overflow: hidden;
+  }
+  .cmd-palette-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: #090e1c;
+  }
+  .cmd-prompt-glyph {
+    color: var(--cyan);
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 900;
+  }
+  .cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    font-weight: 600;
+  }
+  .cmd-input::placeholder {
+    color: #64748b;
+    font-size: 13px;
+  }
+  .cmd-shortcut-tag {
+    background: #1e293b;
+    color: #94a3b8;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-family: monospace;
+    font-weight: 700;
+    border: 1px solid #334155;
+  }
+  .cmd-palette-list {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .cmd-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .cmd-palette-item:hover, .cmd-palette-item.selected {
+    background: rgba(2, 132, 199, 0.22);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+  }
+  .cmd-item-icon {
+    font-size: 10px;
+    font-family: 'SF Mono', Consolas, Monaco, monospace;
+    font-weight: 800;
+    color: var(--cyan);
+    min-width: 52px;
+    text-align: center;
+    background: #0f172a;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #334155;
+    letter-spacing: 0.5px;
+  }
+  .cmd-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .cmd-item-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cmd-item-title .cmd-name {
+    color: var(--cyan);
+    font-family: monospace;
+  }
+  .cmd-item-desc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cmd-item-badge {
+    background: #1e293b;
+    color: #cbd5e1;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .cmd-palette-empty {
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .cmd-palette-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 18px;
+    background: #090e1c;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: #64748b;
+  }
+  .cmd-footer-keys {
+    display: flex;
+    gap: 14px;
+  }
+  .cmd-footer-keys kbd {
+    background: #1e293b;
+    color: #cbd5e1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    border: 1px solid #334155;
+    font-family: monospace;
+  }
+  .cmd-footer-brand {
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ff8c00;
+    font-size: 10px;
+  }
+
+  /* TOAST FLOATING NOTIFICATIONS */
+  .terminal-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0d1527;
+    border: 1px solid var(--cyan);
+    color: #f8fafc;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 15px rgba(56, 189, 248, 0.35);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 9999999;
+    animation: slideUpToast 0.2s ease-out;
+  }
+  @keyframes slideUpToast {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* RESALTADO PULSANTE SPOT EN DOM */
+  @keyframes spotRowPulse {
+    0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.9); background: rgba(56, 189, 248, 0.35) !important; }
+    50% { box-shadow: 0 0 35px 8px rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.55) !important; }
+    100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.45); background: #0f172a !important; }
+  }
+  .spot-pulse-highlight {
+    animation: spotRowPulse 1.2s ease-in-out 3 !important;
+  }
+
+  /* FEEDBACK SENSORIAL: DESTELLOS PERIF├ëRICOS DE ANOMAL├ìAS DE MOMENTUM */
+  @keyframes anomalyGlowLong {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.95), inset 0 0 25px rgba(16, 185, 129, 0.5); border-color: #10b981 !important; }
+    50% { box-shadow: 0 0 40px 8px rgba(16, 185, 129, 0.9), inset 0 0 35px rgba(16, 185, 129, 0.65); border-color: #34d399 !important; }
+    100% { box-shadow: none; }
+  }
+  @keyframes anomalyGlowShort {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.95), inset 0 0 25px rgba(239, 68, 68, 0.5); border-color: #ef4444 !important; }
+    50% { box-shadow: 0 0 40px 8px rgba(239, 68, 68, 0.9), inset 0 0 35px rgba(239, 68, 68, 0.65); border-color: #f87171 !important; }
+    100% { box-shadow: none; }
+  }
+  .flash-long-active {
+    animation: anomalyGlowLong 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+  .flash-short-active {
+    animation: anomalyGlowShort 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  }
+
+  /* MODO LAUNCHPAD MULTIVIEW (TODOS LOS WIDGETS ACTIVOS) */
+  .workspace-mode-launchpad .page {
+    display: block !important;
+    margin-bottom: 24px;
+    padding: 0;
+  }
+  .workspace-mode-launchpad #page-3 {
+    display: none !important; /* DOM est├í fijado a la derecha */
+  }
+
+  /* RESPONSIVE BREAKPOINT PARA PANTALLAS MENORES A 1200PX */
+  @media (max-width: 1200px) {
+    html, body {
+      height: auto;
+      overflow: auto;
+    }
+    .app-viewport {
+      height: auto;
+      overflow: visible;
+    }
+    .workspace-station {
+      display: block;
+      height: auto;
+      overflow: visible;
+    }
+    .workspace-left-analytics {
+      height: auto;
+      overflow: visible;
+      padding: 12px;
+    }
+    .workspace-right-execution {
+      display: none;
+      height: auto;
+      overflow: visible;
+    }
+    #tab-btn-3 {
+      display: inline-block !important;
+    }
+  }
+
+  /* PRICE LADDER / DOM INSTITUCIONAL (SECCI├ôN 4) */
+  table.exec-fast-table { font-size: 13.5px; }
+  table.exec-fast-table th { padding: 10px 14px; font-size: 12.5px; }
+  table.exec-fast-table td { padding: 8.5px 14px; font-weight: 700; }
+  
+  .ladder-row-offer {
+    border-left: 4px solid #ef4444 !important;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.08) 0%, rgba(17, 24, 39, 0.95) 100%);
+  }
+  .ladder-row-demand {
+    border-left: 4px solid #10b981 !important;
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.08) 0%, rgba(17, 24, 39, 0.95) 100%);
+  }
+  .dom-spot-row {
+    border: 2px solid var(--cyan) !important;
+    border-left: 6px solid var(--cyan) !important;
+    background: #0f172a !important;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.45);
+  }
+  .dom-spot-row td {
+    font-size: 16.5px !important;
+    font-weight: 900 !important;
+    color: var(--cyan) !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .dom-price-cell {
+    position: relative;
+    overflow: hidden;
+  }
+  .thermometer-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    opacity: 0.28;
+    pointer-events: none;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .dom-price-text {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .telemetry-accordion {
+    margin: 10px 0 16px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .telemetry-accordion summary {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .telemetry-accordion summary:hover {
+    color: var(--cyan);
+  }
+  .telemetry-content {
+    margin-top: 8px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3.5px 10px;
+    border-radius: 4px;
+    font-weight: 800;
+    font-size: 12px;
+  }
+  .badge-long { background: rgba(16, 185, 129, 0.24); color: #34d399; border: 1px solid #10b981; }
+  .badge-short { background: rgba(239, 68, 68, 0.24); color: #f87171; border: 1px solid #ef4444; }
+  .badge-neutral { background: rgba(148, 163, 184, 0.22); color: #cbd5e1; border: 1px solid #94a3b8; }
+  .badge-star { background: rgba(56, 189, 248, 0.24); color: #7dd3fc; border: 1px solid #38bdf8; }
+  .badge-info { background: #1e293b; color: #cbd5e1; border: 1px solid #475569; }
+  .badge-tp { background: rgba(245, 158, 11, 0.24); color: #fbbf24; border: 1px solid #f59e0b; }
+
+  
+  .chart-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    text-align: center;
+    position: relative;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chart-box img {
+    width: 100%;
+    max-height: 560px;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .chart-loader {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 50px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* PANTALLA DE LOGIN CON SUPABASE AUTH */
+  .auth-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 120px);
+    padding: 20px;
+  }
+  .auth-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  }
+  .auth-title { font-size: 18px; font-weight: 800; color: var(--cyan); margin-bottom: 4px; text-align: center; }
+  .auth-sub { font-size: 12px; color: var(--muted); margin-bottom: 22px; text-align: center; }
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .auth-tab-btn {
+    flex: 1; padding: 10px; background: transparent; border: none;
+    border-bottom: 2px solid transparent; color: var(--muted); font-weight: 700; cursor: pointer;
+  }
+  .auth-tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .auth-label { display: block; font-size: 11.5px; color: var(--muted); margin: 12px 0 4px; font-weight: 700; }
+  .auth-input {
+    width: 100%; background: #0f172a; border: 1px solid var(--border);
+    color: #fff; padding: 10px 12px; border-radius: 6px; font-size: 13px; outline: none;
+  }
+  .auth-input:focus { border-color: var(--cyan); }
+  .auth-btn-submit {
+    width: 100%; background: #0284c7; color: #fff; border: none; padding: 11px;
+    border-radius: 6px; font-weight: 800; font-size: 13.5px; cursor: pointer; margin-top: 20px;
+  }
+  .auth-btn-submit:hover { background: #0369a1; }
+  .auth-alert {
+    display: none; padding: 9px 12px; border-radius: 6px; font-size: 12px; margin-top: 14px; font-weight: 600;
+  }
+  .auth-alert-err { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+  .auth-alert-ok { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #86efac; }
+
+  /* Modal Config Supabase */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: none; justify-content: center; align-items: center; z-index: 9999;
+  }
+  .modal-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 22px; width: 90%; max-width: 520px;
+  }
+  .modal-card h3 { color: var(--cyan); margin-bottom: 12px; font-size: 16px; }
+  .modal-card label { display: block; font-size: 11.5px; color: var(--muted); margin: 10px 0 4px; font-weight: 700; }
+  .modal-card input {
+    width: 100%; background: #0f172a; border: 1px solid var(--border);
+    color: #fff; padding: 8px 10px; border-radius: 6px; font-family: monospace; font-size: 12px;
+  }
+  .modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .btn-save { background: #0284c7; color: #fff; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+  .btn-cancel { background: #334155; color: #fff; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <div>
+        <div class="brand-title">SISTEMA CUANTITATIVO EN TIEMPO REAL V├ìA MT5 (US100-DEC26)</div>
+        <div class="brand-sub" id="hdr-sub">
+          Conectando a Supabase...
+        </div>
+      </div>
+      <!-- BOT├ôN TRIGGER COMMAND PALETTE (CTRL + K) -->
+      <button class="btn-cmd-palette" onclick="openCommandPalette()" title="Abrir Consola de Comandos (Ctrl+K)">
+        <span class="cmd-shortcut">Ctrl+K</span>
+        <span>COMANDOS</span>
+      </button>
+      <!-- BOT├ôN MUTE ALERTAS SENSORIALES -->
+      <button id="btn-toggle-alerts" class="btn-alerts-toggle" onclick="toggleAlertsMute()" title="Silenciar / Activar Alertas Sensoriales">
+        <span id="alert-icon" class="status-led-dot"></span>
+        <span id="alert-lbl">ALERTAS: ON</span>
+      </button>
+    </div>
+
+    <!-- RELOJ DUAL INSTITUCIONAL & SESI├ôN DE MERCADO -->
+    <div class="market-clock-card">
+      <div class="clock-row">
+        <div class="clock-item clock-ny" title="Hora Oficial de Wall Street (America/New_York)">
+          <span class="clock-lbl">WALL ST:</span>
+          <span class="clock-digits" id="live-ny-clock">--:--:-- EDT</span>
+        </div>
+        <div class="clock-divider">|</div>
+        <div class="clock-item clock-local" title="Hora Local del Operador (Ecuador UTC-5)">
+          <span class="clock-lbl">LOCAL (EC):</span>
+          <span class="clock-digits" id="live-local-clock">--:--:--</span>
+        </div>
+        <div id="live-session-badge" class="session-badge session-badge-closed">[MERCADO CERRADO]</div>
+      </div>
+      <div class="clock-market-schedule">
+        <span class="sched-pill">CASH: 09:30ΓÇô16:00 ET</span>
+        <span class="sched-bullet">ΓÇó</span>
+        <span class="sched-pill">CME FUTURES: VIE 17:00 ET / DOM 18:00 ET</span>
+      </div>
+    </div>
+
+    <!-- SEM├üFORO MAESTRO DE R├ëGIMEN UNIFICADO -->
+    <div class="regime-card" id="regime-banner-box">
+      <div class="regime-header">
+        <span>R├ëGIMEN HMM NQ (MARKOV)</span>
+        <span class="tooltip-icon" data-tip="Gaussian Hidden Markov Model de 3 Estados continuo sobre Retornos Logar├¡tmicos 15m y Varianza GARCH. Emite la probabilidad estoc├ística pura de transici├│n de r├⌐gimen sin reglas heur├¡sticas.">Γôÿ</span>
+      </div>
+      <div class="regime-val" id="regime-status-text">R├ëGIMEN HMM NQ: Calibrando Estados...</div>
+    </div>
+
+    <div class="top-kpis">
+      <div class="kpi-pill-range">
+        <div class="lbl">RANGO HIST├ôRICO</div>
+        <div class="val" id="kpi-range">Esperando datos...</div>
+      </div>
+      <div class="kpi-pill" title="Spread Bid-Ask en vivo de MT5 Nivel 1"><div class="lbl">Spread L1</div><div class="val" id="kpi-spread">--</div></div>
+      <div class="kpi-pill" title="Volumen Relativo (20 d├¡as) y Velocidad del Tape en 5m"><div class="lbl">RVOL / Tape</div><div class="val" id="kpi-tape">--</div></div>
+      <div class="kpi-pill" title="Gap vs Cierre RTH de las 16:00 ET del d├¡a previo"><div class="lbl">Gap PDC (16:00)</div><div class="val" id="kpi-gap">--</div></div>
+      <div class="kpi-pill" title="Opening Range: Rango de apertura de contado (09:30-09:45 ET)"><div class="lbl">OR (09:30-09:45)</div><div class="val" id="kpi-or" style="color:var(--cyan);">--</div></div>
+      <div class="kpi-pill" title="Initial Balance: Rango de la primera hora de Wall Street (09:30-10:30 ET)"><div class="lbl">IB (09:30-10:30)</div><div class="val" id="kpi-ib" style="color:var(--gold);">--</div></div>
+      <div class="kpi-pill"><div class="lbl">Spot MT5</div><div class="val" id="kpi-spot" style="color:var(--cyan);">--</div></div>
+      <div class="kpi-pill"><div class="lbl">Globex VWAP</div><div class="val" id="kpi-vwap-globex">--</div></div>
+      <div class="kpi-pill"><div class="lbl">RTH Cash VWAP</div><div class="val" id="kpi-vwap-rth">--</div></div>
+      <div class="kpi-pill"><div class="lbl">POC Profile</div><div class="val" id="kpi-vp" style="color:var(--gold);">--</div></div>
+      <div class="kpi-pill"><div class="lbl">Zero-Gamma <span class="tooltip-icon" data-tip="Pivote de volatilidad institucional. Por encima los Dealers amortiguan el precio; por debajo aceleran ca├¡das.">Γôÿ</span></div><div class="val" id="kpi-zg" style="color:#facc15;">--</div></div>
+      <div class="kpi-pill"><div class="lbl">Put / Call Wall</div><div class="val" id="kpi-walls">--</div></div>
+      <div class="kpi-pill" title="Procesos de Hawkes 1D: Probabilidad matem├ítica exacta de Ruptura vs Rebote en Call/Put Wall"><div class="lbl">Hawkes Wall Prob</div><div class="val" id="kpi-hawkes" style="color:var(--cyan); font-size:11px;">--</div></div>
+      <div class="kpi-pill" title="Tasa Libre de Riesgo FRED API (DTB3 3-Month T-Bill) &amp; Fair Value Cost of Carry"><div class="lbl">FRED 3M / Carry</div><div class="val" id="kpi-fred" style="color:var(--gold);">--</div></div>
+      <div class="kpi-pill"><div class="lbl">Log-Ret 5m</div><div class="val" id="kpi-lr" style="color:var(--orange);">--</div></div>
+      <div id="status-pill" class="status-badge status-waiting">ΓùÅ Conectando...</div>
+      <div id="user-pill" class="user-badge" style="display:none;">
+        <span id="user-email-lbl">usuario@...</span>
+        <button class="btn-logout" onclick="handleLogout()">Salir</button>
+      </div>
+      <button class="btn-cfg" onclick="openConfigModal()">AJUSTES</button>
+    </div>
+  </div>
+
+  <!-- TICKER TAPE MACROECON├ôMICO (ESTILO BLOOMBERG NEWS & VOLATILITY MARQUEE) -->
+  <div class="macro-ticker-tape" id="macro-ticker-tape">
+    <div class="ticker-label">
+      <span>LIVE MACRO</span>
+    </div>
+    <div class="ticker-track">
+      <div class="ticker-content" id="ticker-content">
+        <span class="ticker-item"><span class="ticker-tag red">FOMC</span> [14:00 ET] FED INTEREST RATE DECISION &amp; STATEMENT ΓÇö VOLATILIDAD: EXTREMA</span>
+        <span class="ticker-item"><span class="ticker-tag yellow">CPI</span> [08:30 ET] US CPI CORE (MoM/YoY) ΓÇö CONSUMER PRICE INDEX: 3.1% EXP</span>
+        <span class="ticker-item"><span class="ticker-tag green">ISM</span> [10:00 ET] ISM SERVICES PMI ΓÇö EXPANSIONARY UMBRAL 50.0 (PREV: 51.5)</span>
+        <span class="ticker-item"><span class="ticker-tag cyan">GLOBEX</span> NQ1! / MNQ1! ACTIVE SESSION ΓÇö DECAY CHARM: -0.42p/h</span>
+        <span class="ticker-item"><span class="ticker-tag gold">DEALER GEX</span> POSITIVE GAMMA BUFFER: AMORTIGUACI├ôN POR ENCIMA DE ZERO-GAMMA</span>
+        <span class="ticker-item"><span class="ticker-tag purple">RTH CASH</span> APERTURA 09:30 ET ΓÇö OPENING RANGE (09:30-09:45) &amp; INITIAL BALANCE (09:30-10:30)</span>
+        <span class="ticker-item"><span class="ticker-tag cyan">VOLATILIDAD</span> GJR-GARCH(1,1)-t CONDICIONAL ACTIVA ΓÇö FHS MONTE CARLO 10K TRAYECTORIAS</span>
+        <!-- Duplicado continuo para scroll infinito -->
+        <span class="ticker-item"><span class="ticker-tag red">FOMC</span> [14:00 ET] FED INTEREST RATE DECISION &amp; STATEMENT ΓÇö VOLATILIDAD: EXTREMA</span>
+        <span class="ticker-item"><span class="ticker-tag yellow">CPI</span> [08:30 ET] US CPI CORE (MoM/YoY) ΓÇö CONSUMER PRICE INDEX: 3.1% EXP</span>
+        <span class="ticker-item"><span class="ticker-tag green">ISM</span> [10:00 ET] ISM SERVICES PMI ΓÇö EXPANSIONARY UMBRAL 50.0 (PREV: 51.5)</span>
+        <span class="ticker-item"><span class="ticker-tag cyan">GLOBEX</span> NQ1! / MNQ1! ACTIVE SESSION ΓÇö DECAY CHARM: -0.42p/h</span>
+        <span class="ticker-item"><span class="ticker-tag gold">DEALER GEX</span> POSITIVE GAMMA BUFFER: AMORTIGUACI├ôN POR ENCIMA DE ZERO-GAMMA</span>
+        <span class="ticker-item"><span class="ticker-tag purple">RTH CASH</span> APERTURA 09:30 ET ΓÇö OPENING RANGE (09:30-09:45) &amp; INITIAL BALANCE (09:30-10:30)</span>
+        <span class="ticker-item"><span class="ticker-tag cyan">VOLATILIDAD</span> GJR-GARCH(1,1)-t CONDICIONAL ACTIVA ΓÇö FHS MONTE CARLO 10K TRAYECTORIAS</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE LOGIN CON SUPABASE AUTH -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-title">TERMINAL INSTITUCIONAL ΓÇö ACCESO</div>
+      <div class="auth-sub">Terminal Cuantitativa NQ / MNQ (Tiempo Real v├¡a MT5)</div>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="btn-tab-login" onclick="setAuthMode('login')">Iniciar Sesi├│n</button>
+        <button class="auth-tab-btn" id="btn-tab-signup" onclick="setAuthMode('signup')">Crear Cuenta</button>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <label class="auth-label">CORREO ELECTR├ôNICO</label>
+        <input type="email" id="auth-email" class="auth-input" placeholder="tu-correo@ejemplo.com" required>
+
+        <label class="auth-label">CONTRASE├æA</label>
+        <input type="password" id="auth-password" class="auth-input" placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" required>
+
+        <button type="submit" class="auth-btn-submit" id="auth-submit-btn">Ingresar al Dashboard</button>
+      </form>
+
+      <div class="auth-alert" id="auth-alert"></div>
+    </div>
+  </div>
+
+  <!-- CONTENIDO PROTEGIDO DEL DASHBOARD (VISIBLE SOLO TRAS INICIAR SESI├ôN) -->
+  <div id="dashboard-wrapper" style="display:none;" class="cockpit-mode-active">
+    <div class="workspace-station" id="workspace-station">
+      
+      <!-- COLUMNA IZQUIERDA: ANALYTICS LAUNCHPAD WORKSPACE -->
+      <main class="workspace-left-analytics" id="workspace-left-analytics">
+        
+        <!-- HUD ALERT BANNER: AUDITOR├ìA DE RIESGO FAIL-SAFE (KUPIEC & CHRISTOFFERSEN) -->
+        <div id="hud-risk-alert" style="display:none; margin: 8px 12px 6px 12px; padding: 10px 16px; background: rgba(239, 68, 68, 0.25); border: 2px solid #ef4444; border-radius: 6px; color: #ffffff; font-weight: 800; font-size: 13px; text-align: center; letter-spacing: 0.5px;">
+          ΓÜá∩╕Å MODELO GARCH INVALIDADO (Kupiec p&lt;0.05) - Recalibrando MLE
+        </div>
+
+        <!-- BARRA DE NAVEGACI├ôN Y SELECTOR DE VISTA LAUNCHPAD -->
+        <div class="analytics-toolbar">
+          <div class="analytics-tabs-group">
+            <button class="tab-btn active" id="tab-btn-0" onclick="openTab(0)">SECCI├ôN 1: MACRO GARCH</button>
+            <button class="tab-btn" id="tab-btn-1" onclick="openTab(1)">SECCI├ôN 2: LIQUIDEZ GEX</button>
+            <button class="tab-btn" id="tab-btn-2" onclick="openTab(2)">SECCI├ôN 3: MICROESTRUCTURA</button>
+            <button class="tab-btn" id="tab-btn-4" onclick="openTab(4)">SECCI├ôN 5: ESTRATEGIAS MT5</button>
+            <button class="tab-btn" id="tab-btn-3" onclick="openTab(3)" style="display:none;">SECCI├ôN 4: DOM CL├üSICO</button>
+          </div>
+          <div class="analytics-view-switch">
+            <button class="btn-view-mode" id="btn-toggle-multiview" onclick="toggleLaunchpadMultiView()" title="Alternar entre Vista de Pesta├▒as y Vista Modular de Todos los Widgets">VISTA MULTIPANEL</button>
+          </div>
+        </div>
+
+        <!-- SECCI├ôN 1: MACRO 15M -->
+        <div class="page active" id="page-0">
+          <div id="dec-banner-1"></div>
+          <div class="chart-box" id="box-chart-1">
+            <img id="img-chart-1" src="" alt="Secci├│n 1: Conos de Monte Carlo + GARCH(1,1)" style="display:none; width:100%; max-height:550px; object-fit:contain; border-radius:4px;">
+            <div id="loader-chart-1" class="chart-loader">Cargando Gr├ífico Cuantitativo Macro (Monte Carlo 10,000 + GARCH)...</div>
+          </div>
+          <div class="section-hdr">
+            <span>1A. MATRIZ DE PROYECCI├ôN DE PRECIOS POR HORIZONTE (MONTE CARLO) <span class="tooltip-icon" data-tip="Simulaci├│n FHS Monte Carlo de 10,000 trayectorias proyectadas por bloques temporales con distribuci├│n emp├¡rica t-Student. Rango temporal de ejecuci├│n de ├│rdenes limitadas.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-cone"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+
+          <details class="telemetry-accordion">
+            <summary>Telemetr├¡a Matem├ítica Avanzada &amp; M├⌐tricas de Riesgo Operativo (GJR-GARCH / VaR / CVaR)</summary>
+            <div class="telemetry-content" id="telemetry-garch-content">
+              <div style="margin-bottom:10px; line-height:1.5;">
+                <div id="telemetry-adf-row" style="margin-bottom:8px; padding:8px 12px; background:rgba(15,23,42,0.85); border:1px solid var(--border); border-radius:4px; font-size:12px; display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <strong style="color:var(--text);">Auditor├¡a de Estacionariedad:</strong>
+                  <span id="telemetry-adf-badge" style="display:inline-block; padding:2px 8px; border-radius:3px; font-weight:800; font-size:11px; background:rgba(16,185,129,0.18); color:#10b981; border:1px solid #10b981;">Prueba ADF: Estacionaria (p&lt;0.05)</span>
+                  <span id="telemetry-adf-detail" style="color:var(--muted); font-size:11px;">Estad├¡stico: - | Cr├¡tico 5%: -2.86 | Luz Verde Operativa</span>
+                </div>
+                <div id="telemetry-risk-audit-row" style="margin-bottom:8px; padding:8px 12px; background:rgba(15,23,42,0.85); border:1px solid var(--border); border-radius:4px; font-size:12px; display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <strong style="color:var(--text);">Auditor├¡a de Riesgo VaR 99%:</strong>
+                  <span id="telemetry-kupiec-badge" style="display:inline-block; padding:2px 8px; border-radius:3px; font-weight:800; font-size:11px; background:rgba(16,185,129,0.18); color:#10b981; border:1px solid #10b981;">Kupiec POF: Validado</span>
+                  <span id="telemetry-christoffersen-badge" style="display:inline-block; padding:2px 8px; border-radius:3px; font-weight:800; font-size:11px; background:rgba(16,185,129,0.18); color:#10b981; border:1px solid #10b981;">Christoffersen: Independiente</span>
+                  <span id="telemetry-risk-detail" style="color:var(--muted); font-size:11px;">Excepciones: 2 / 250 (Esp: 2.5) | Sin Clustering</span>
+                </div>
+                <strong>Ecuaci├│n de Varianza Condicional:</strong> ╧â┬▓_t = ╧ë + (╬▒ + ╬│ ┬╖ I_{╬╡ &lt; 0}) ┬╖ ╬╡┬▓_{t-1} + ╬▓ ┬╖ ╧â┬▓_{t-1}<br>
+                <strong>Distribuci├│n de Innovaciones:</strong> Student-t con ╬╜ grados de libertad (estimaci├│n MLE) | <strong>Simulaci├│n:</strong> FHS N=10,000 rutas.<br>
+                <div id="telemetry-garch-params" style="margin-top:6px; color:var(--cyan); font-weight:700;"></div>
+              </div>
+              <div class="section-hdr" style="margin-top:12px; margin-bottom:6px;">
+                <span>1B. M├⌐tricas de Riesgo Operativo y Colas Pesadas (VaR 99% / CVaR 99%) <span class="tooltip-icon" data-tip="CVaR 99%: P├⌐rdida esperada en el 1% de los escenarios m├ís desfavorables de la sesi├│n (Hard Stop Cuantitativo).">Γôÿ</span></span>
+              </div>
+              <div class="table-wrap"><table class="quant-table" id="tbl-tail"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+            </div>
+          </details>
+        </div>
+
+        <!-- SECCI├ôN 2: ZONAS DE LIQUIDEZ -->
+        <div class="page" id="page-1">
+          <div id="dec-banner-2"></div>
+          <div class="chart-box" id="box-chart-2">
+            <img id="img-chart-2" src="" alt="Secci├│n 2: Perfil GEX + ├ürbol Binomial CRR" style="display:none; width:100%; max-height:550px; object-fit:contain; border-radius:4px;">
+            <div id="loader-chart-2" class="chart-loader">Cargando Gr├ífico Zonas de Liquidez (Perfil GEX + ├ürbol Binomial CRR + Cobertura Dealers)...</div>
+          </div>
+          <div class="section-hdr">
+            <span>2A. Perfil GEX + ├ürbol Binomial CRR ΓÇö Confluencia &gt; 80% <span class="tooltip-icon" data-tip="Filtro institucional de strikes operables intrad├¡a (|K - Spot| Γëñ 1,200p) con valoraci├│n americana CRR.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-gex"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-hdr">
+            <span>2B. S├¡ntesis de Muros Institucionales y Cobertura Dealers <span class="tooltip-icon" data-tip="Zero-Gamma marca la frontera de estabilidad de los market makers. Vanna/Charm proyecta flujos din├ímicos por variaci├│n de volatilidad e implosi├│n temporal.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-gex-sum"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <!-- SECCI├ôN 3: MICROESTRUCTURA 5M -->
+        <div class="page" id="page-2">
+          <div id="dec-banner-3"></div>
+          <div class="chart-box" id="box-chart-3">
+            <img id="img-chart-3" src="" alt="Secci├│n 3: Microestructura 5m (Anomal├¡as de Retornos Logar├¡tmicos)" style="display:none; width:100%; max-height:550px; object-fit:contain; border-radius:4px;">
+            <div id="loader-chart-3" class="chart-loader">Cargando Gr├ífico Cuantitativo (Anomal├¡as de Retornos Logar├¡tmicos 5m)...</div>
+          </div>
+          <div class="chart-box" id="box-canvas-lr" style="height: 360px; display:none;">
+            <canvas id="chartLogReturn"></canvas>
+          </div>
+          <div class="section-hdr">
+            <span>3A. Detector de Anomal├¡as de Momentum 5m (Log Returns ┬▒2.0╧â) <span class="tooltip-icon" data-tip="Filtro de permutaci├│n no param├⌐trico Monte Carlo (N=1,000): Solo rupturas con significancia p Γëñ 0.05 se catalogan como se├▒ales v├ílidas de momentum.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-log-anom"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-hdr">
+            <span>3B. Microestructura 5m: Doble VWAP, OFI y Memoria Fractal <span class="tooltip-icon" data-tip="Doble anclaje VWAP (Globex 18:00 vs Cash 09:30 ET). Exponente de Hurst H &gt; 0.55 revela persistencia tendencial.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-micro"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <!-- SECCI├ôN 4: MATRIZ DE EJECUCI├ôN (Visible como p├ígina en vista cl├ísica o m├│vil) -->
+        <div class="page" id="page-3">
+          <div id="dec-banner-master"></div>
+          <div class="section-hdr">
+            <span>SECCI├ôN 4: PRICE LADDER / DOM INSTITUCIONAL (NIVEL 1 MT5) <span class="tooltip-icon" data-tip="Escalera de precios con term├│metro visual de proximidad al Spot, anclajes de sesi├│n (OR, IB, PDC) y muros institucionales confluentes.">Γôÿ</span></span>
+            <button class="btn-center-spot" onclick="centerSpotLadder()">CENTRAR SPOT</button>
+          </div>
+          <div class="table-wrap"><table class="quant-table exec-fast-table" id="tbl-exec"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <!-- SECCI├ôN 5: ESTRATEGIAS INSTITUCIONALES -->
+        <div class="page" id="page-4">
+          <div class="section-hdr">
+            <span>SECCI├ôN 5: ESTRATEGIAS INSTITUCIONALES (100% NIVEL 1 MT5) <span class="tooltip-icon" data-tip="Modelos de microestructura institucional ejecutables puramente con cotizaciones de Nivel 1 de MetaTrader 5.">Γôÿ</span></span>
+          </div>
+          <div class="table-wrap"><table class="quant-table" id="tbl-strat"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </main>
+
+      <!-- COLUMNA DERECHA STICKY: CABINA DE COMBATE (DOM HUD EN VIVO) -->
+      <aside class="workspace-right-execution" id="cockpit-side-panel">
+        <div class="exec-hud-header">
+          <div class="exec-hud-title">
+            <span class="pulse-indicator">ΓùÅ</span>
+            <span>DOM LADDER MT5</span>
+            <span id="dom-tick-flash" class="badge badge-info" style="font-size:10px; margin-left:4px;">0.00</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <button class="btn-auto-follow active" id="btn-auto-center" onclick="toggleAutoCenter()">AUTO: ON</button>
+            <button class="btn-center-spot" onclick="manualCenterSpotSide()">CENTRAR SPOT</button>
+          </div>
+        </div>
+        <div class="dom-tape-bar" id="dom-tape-bar">
+          <span class="tape-item">SPOT: <strong id="dom-spot-val" style="color:var(--cyan);">--</strong></span>
+          <span class="tape-item">SPREAD: <strong id="dom-spread-val">--</strong></span>
+          <span class="tape-item">TAPE: <strong id="dom-tape-spd">--</strong></span>
+        </div>
+        <div class="exec-side-decision" id="dec-banner-master-side"></div>
+        <div class="exec-side-table-wrap" id="exec-side-table-container">
+          <table class="quant-table exec-fast-table" id="tbl-exec-side"><thead><tr><th>Cargando...</th></tr></thead><tbody></tbody></table>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE AJUSTES SUPABASE -->
+  <div class="modal-overlay" id="cfg-modal">
+    <div class="modal-card">
+      <h3>Configurar Conexi├│n a Supabase</h3>
+      <p style="font-size:12px;color:var(--muted);">Credenciales de Supabase (Settings &gt; API). Se guardan de forma segura en tu navegador.</p>
+      
+      <label>SUPABASE PROJECT URL</label>
+      <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+
+      <label>SUPABASE ANON PUBLIC KEY</label>
+      <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeConfigModal()">Cerrar</button>
+        <button class="btn-save" onclick="saveConfigFromModal()">Guardar y Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL COMMAND PALETTE (CTRL + K) -->
+  <div class="cmd-palette-backdrop" id="cmd-palette-backdrop" style="display:none;" onclick="handlePaletteBackdropClick(event)">
+    <div class="cmd-palette-card" id="cmd-palette-card">
+      <div class="cmd-palette-search">
+        <span class="cmd-prompt-glyph">&gt;</span>
+        <input type="text" id="cmd-palette-input" class="cmd-input" placeholder="Escribe un comando... (ej: focus DOM, toggle macro, clear cache, mute)" autocomplete="off" spellcheck="false">
+        <span class="cmd-shortcut-tag">ESC</span>
+      </div>
+      <div class="cmd-palette-list" id="cmd-palette-list">
+        <!-- Renderizado din├ímico de comandos -->
+      </div>
+      <div class="cmd-palette-footer">
+        <div class="cmd-footer-keys">
+          <span><kbd>Γåæ</kbd> <kbd>Γåô</kbd> Navegar</span>
+          <span><kbd>Γå╡</kbd> Ejecutar</span>
+          <span><kbd>ESC</kbd> Cerrar</span>
+        </div>
+        <div class="cmd-footer-brand">BLOOMBERG TERMINAL CLI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING TOAST NOTIFICATION -->
+  <div class="terminal-toast" id="terminal-toast"></div>
+
+<script>
+// Credenciales
+let SB_URL = (window.ENV_SUPABASE_URL && window.ENV_SUPABASE_URL.trim()) || localStorage.getItem('supabase_url') || '';
+let SB_KEY = (window.ENV_SUPABASE_ANON_KEY && window.ENV_SUPABASE_ANON_KEY.trim()) || localStorage.getItem('supabase_anon_key') || '';
+let supabaseClient = null;
+let lrChart = null;
+let authMode = 'login'; // 'login' o 'signup'
+
+// Estado del Watchdog
+let lastPulseTime = null; // Timestamp en ms del ├║ltimo pulso recibido
+let currentSessionStatus = 'ABIERTO';
+let lastKnownSpot = null;
+
+// Estado Terminal Bloomberg, Command Palette & Alertas Sensoriales
+let alertsMuted = localStorage.getItem('nq_alerts_muted') === 'true';
+let paletteOpen = false;
+let paletteSelectedIndex = 0;
+let filteredCommands = [];
+let workspaceMultiView = false;
+let toastTimeout = null;
+let lastAnomalyAlertTime = 0;
+let audioCtx = null;
+
+// Estado maestro en memoria que jam├ís permite que se borren tablas institucionales
+let currentMasterSnapshot = {
+  cone_table: [],
+  tail_table: [],
+  gex_table: [],
+  gex_summary: [],
+  log_anom_table: [],
+  micro_table: [],
+  exec_matrix: [],
+  strategies_table: [],
+  decisions: {},
+  kpis: {},
+  chart_series: {}
+};
+
+// ==============================================================================
+// UTILIDADES CUANTITATIVAS SEGURAS (DEFENSIVE FORMATTING & OPTIONAL CHAINING)
+// ==============================================================================
+
+// Formatea n├║meros con decimales fijos sin crashear jam├ís ante null, undefined o NaN
+function safeNum(val, decimals = 2, prefix = '', suffix = '') {
+  if (val === null || val === undefined || val === '') return '--';
+  const n = typeof val === 'number' ? val : parseFloat(val);
+  if (!Number.isFinite(n)) return '--';
+  return prefix + n.toFixed(decimals) + suffix;
+}
+
+// Formatea n├║meros con separador de miles estadounidense (ej: 29,740.50)
+function safeLoc(val, decimals = 2, prefix = '', suffix = '') {
+  if (val === null || val === undefined || val === '') return '--';
+  const n = typeof val === 'number' ? val : parseFloat(val);
+  if (!Number.isFinite(n)) return '--';
+  return prefix + n.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }) + suffix;
+}
+
+// Extrae un valor num├⌐rico seguro o retorna fallback
+function safeFloat(val, fallback = null) {
+  if (val === null || val === undefined || val === '') return fallback;
+  const n = typeof val === 'number' ? val : parseFloat(val);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// Resuelve strings Base64 con soporte de data URI, URLs http y strings crudos
+function resolveImageSrc(imgVal) {
+  if (!imgVal) return null;
+  if (typeof imgVal === 'object') {
+    imgVal = imgVal.b64 || imgVal.url || imgVal.src || imgVal.data || '';
+  }
+  if (typeof imgVal !== 'string') return null;
+  const s = imgVal.trim();
+  if (s.length < 5) return null;
+  if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')) {
+    return s;
+  }
+  return 'data:image/png;base64,' + s;
+}
+
+// Inyecci├│n e hidrataci├│n blindada de gr├íficos institucionales (Secciones 1, 2 y 3)
+function renderChartImages(source) {
+  const row = source || {};
+  const cs = (row && row.chart_series) || (currentMasterSnapshot && currentMasterSnapshot.chart_series) || {};
+
+  // Gr├ífico 1: Macro GARCH & Monte Carlo
+  const src1 = resolveImageSrc(
+    row.image_garch ||
+    row.chart_garch ||
+    row.page1_b64 ||
+    row.b64_page1 ||
+    cs.image_garch ||
+    cs.page1_b64 ||
+    cs.b64_page1 ||
+    currentMasterSnapshot?.chart_series?.page1_b64 ||
+    currentMasterSnapshot?.chart_series?.image_garch ||
+    currentMasterSnapshot?.image_garch
+  );
+  const img1 = document.getElementById('img-chart-1');
+  const ld1 = document.getElementById('loader-chart-1');
+  if (img1 && src1) {
+    img1.onerror = () => {
+      img1.style.display = 'none';
+      if (ld1) { ld1.style.display = 'flex'; ld1.textContent = 'Error al renderizar gr├ífico Macro GARCH'; }
+    };
+    img1.src = src1;
+    img1.style.display = 'block';
+    if (ld1) ld1.style.display = 'none';
+  }
+
+  // Gr├ífico 2: Zonas de Liquidez CRR + GEX
+  const src2 = resolveImageSrc(
+    row.image_gex ||
+    row.chart_gex ||
+    row.page2_b64 ||
+    row.b64_page2 ||
+    cs.image_gex ||
+    cs.page2_b64 ||
+    cs.b64_page2 ||
+    currentMasterSnapshot?.chart_series?.page2_b64 ||
+    currentMasterSnapshot?.chart_series?.image_gex ||
+    currentMasterSnapshot?.image_gex
+  );
+  const img2 = document.getElementById('img-chart-2');
+  const ld2 = document.getElementById('loader-chart-2');
+  if (img2 && src2) {
+    img2.onerror = () => {
+      img2.style.display = 'none';
+      if (ld2) { ld2.style.display = 'flex'; ld2.textContent = 'Error al renderizar gr├ífico Zonas de Liquidez'; }
+    };
+    img2.src = src2;
+    img2.style.display = 'block';
+    if (ld2) ld2.style.display = 'none';
+  }
+
+  // Gr├ífico 3: Microestructura 5m (Anomal├¡as de Retornos Logar├¡tmicos)
+  const src3 = resolveImageSrc(
+    row.image_micro ||
+    row.chart_micro ||
+    row.page3_b64 ||
+    row.b64_page3 ||
+    cs.image_micro ||
+    cs.page3_b64 ||
+    cs.b64_page3 ||
+    currentMasterSnapshot?.chart_series?.page3_b64 ||
+    currentMasterSnapshot?.chart_series?.image_micro ||
+    currentMasterSnapshot?.image_micro
+  );
+  const img3 = document.getElementById('img-chart-3');
+  const ld3 = document.getElementById('loader-chart-3');
+  const boxCanvas = document.getElementById('box-canvas-lr');
+  if (img3 && src3) {
+    img3.onerror = () => {
+      img3.style.display = 'none';
+      if (ld3) { ld3.style.display = 'flex'; ld3.textContent = 'Error al renderizar gr├ífico Microestructura'; }
+    };
+    img3.src = src3;
+    img3.style.display = 'block';
+    if (ld3) ld3.style.display = 'none';
+    if (boxCanvas) boxCanvas.style.display = 'none';
+  } else if (cs.log_ret && Array.isArray(cs.log_ret) && cs.log_ret.length > 0) {
+    if (boxCanvas) boxCanvas.style.display = 'block';
+    if (ld3) ld3.style.display = 'none';
+    updateLogReturnChart(cs);
+  }
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  document.getElementById('btn-tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('btn-tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'Ingresar al Dashboard' : 'Crear Cuenta';
+  hideAuthAlert();
+}
+
+function showAuthAlert(msg, isError = true) {
+  const el = document.getElementById('auth-alert');
+  el.className = 'auth-alert ' + (isError ? 'auth-alert-err' : 'auth-alert-ok');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideAuthAlert() {
+  document.getElementById('auth-alert').style.display = 'none';
+}
+
+function openTab(idx) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  document.querySelectorAll('.page').forEach((p, i) => p.classList.toggle('active', i === idx));
+  if (idx === 3) {
+    setTimeout(centerSpotLadder, 80);
+  }
+}
+
+function openConfigModal() {
+  document.getElementById('cfg-url').value = SB_URL;
+  document.getElementById('cfg-key').value = SB_KEY;
+  document.getElementById('cfg-modal').style.display = 'flex';
+}
+function closeConfigModal() {
+  document.getElementById('cfg-modal').style.display = 'none';
+}
+function saveConfigFromModal() {
+  const u = document.getElementById('cfg-url').value.trim();
+  const k = document.getElementById('cfg-key').value.trim();
+  if (u && k) {
+    SB_URL = u;
+    SB_KEY = k;
+    localStorage.setItem('supabase_url', u);
+    localStorage.setItem('supabase_anon_key', k);
+    closeConfigModal();
+    initApp();
+  }
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  hideAuthAlert();
+  if (!supabaseClient) {
+    showAuthAlert('Supabase no est├í configurado. Revisa tus credenciales en Ajustes.', true);
+    return;
+  }
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  if (authMode === 'login') {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      showAuthAlert('Error al iniciar sesi├│n: ' + error.message, true);
+    } else {
+      checkSessionAndRender(data.session);
+    }
+  } else {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      showAuthAlert('Error al registrar usuario: ' + error.message, true);
+    } else if (data?.session) {
+      checkSessionAndRender(data.session);
+    } else {
+      showAuthAlert('┬íCuenta creada exitosamente! Revisa tu correo de confirmaci├│n o inicia sesi├│n.', false);
+      setAuthMode('login');
+    }
+  }
+}
+
+async function handleLogout() {
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
+  checkSessionAndRender(null);
+}
+
+function checkSessionAndRender(session) {
+  const authScreen = document.getElementById('auth-screen');
+  const dashWrapper = document.getElementById('dashboard-wrapper');
+  const userPill = document.getElementById('user-pill');
+  const emailLbl = document.getElementById('user-email-lbl');
+
+  authScreen.style.display = 'none';
+  dashWrapper.style.display = 'flex';
+
+  if (session && session.user) {
+    userPill.style.display = 'flex';
+    emailLbl.textContent = 'ID: ' + session.user.email;
+  } else {
+    userPill.style.display = 'flex';
+    emailLbl.textContent = 'MODO P├ÜBLICO (NIVEL 1 MT5)';
+  }
+  loadLatestSnapshot();
+  subscribeRealtime();
+}
+
+
+// Comprobador institucional de horario CME (Globex NQ / MNQ)
+function isCmeMarketOpen(nyDate) {
+  const day = nyDate.getDay(); // 0 = Domingo, 1 = Lunes, ..., 5 = Viernes, 6 = S├íbado
+  const hour = nyDate.getHours();
+  const minute = nyDate.getMinutes();
+  const timeVal = hour * 60 + minute;
+  
+  // S├íbado: Mercado cerrado todo el d├¡a
+  if (day === 6) return false;
+  // Domingo: Abre a las 18:00 ET (1080 min)
+  if (day === 0) return timeVal >= 1080;
+  // Viernes: Cierra a las 17:00 ET (1020 min)
+  if (day === 5) return timeVal < 1020;
+  // Lunes a Jueves: Mantenimiento diario entre 17:00 (1020) y 18:00 (1080)
+  if (timeVal >= 1020 && timeVal < 1080) return false;
+  return true;
+}
+
+// Reloj dual en vivo (Wall Street EDT vs Local) & Estado Din├ímico de Sesi├│n
+function updateClocks() {
+  const now = new Date();
+  
+  // 1. Reloj Wall Street (America/New_York)
+  try {
+    const nyTimeStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).format(now);
+    const nyClockEl = document.getElementById('live-ny-clock');
+    if (nyClockEl) nyClockEl.textContent = `${nyTimeStr} EDT`;
+  } catch (e) {
+    const nyStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const nyDate = new Date(nyStr);
+    const hh = String(nyDate.getHours()).padStart(2, '0');
+    const mm = String(nyDate.getMinutes()).padStart(2, '0');
+    const ss = String(nyDate.getSeconds()).padStart(2, '0');
+    const nyClockEl = document.getElementById('live-ny-clock');
+    if (nyClockEl) nyClockEl.textContent = `${hh}:${mm}:${ss} EDT`;
+  }
+
+  // 2. Reloj Local del Usuario (Ecuador / Local)
+  const locH = String(now.getHours()).padStart(2, '0');
+  const locM = String(now.getMinutes()).padStart(2, '0');
+  const locS = String(now.getSeconds()).padStart(2, '0');
+  const locClockEl = document.getElementById('live-local-clock');
+  if (locClockEl) locClockEl.textContent = `${locH}:${locM}:${locS}`;
+
+  // 3. Indicador Din├ímico de Sesi├│n Institucional
+  const badge = document.getElementById('live-session-badge');
+  if (!badge) return;
+
+  const nyStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+  const nyDate = new Date(nyStr);
+  const day = nyDate.getDay(); // 0 Dom, 1 Lun, ..., 5 Vie, 6 Sab
+  const minOfDay = nyDate.getHours() * 60 + nyDate.getMinutes();
+
+  // RTH Cash (NYSE/NASDAQ Acciones): Lun-Vie 09:30 (570 min) a 16:00 (960 min)
+  const isRTH = (day >= 1 && day <= 5) && (minOfDay >= 570 && minOfDay < 960);
+  
+  // CME Futuros NQ (Globex 24/5):
+  const isCME = isCmeMarketOpen(nyDate);
+
+  if (isRTH) {
+    badge.className = 'session-badge session-badge-rth';
+    badge.textContent = '[RTH CASH + CME]';
+    badge.title = 'Sesi├│n Regular de Acciones (09:30-16:00 ET) y Futuros CME activa';
+  } else if (isCME) {
+    badge.className = 'session-badge session-badge-cme';
+    badge.textContent = '[CME FUTURES / GLOBEX]';
+    badge.title = 'Mercado de Futuros CME abierto (Acciones Cash cerraron a las 16:00 ET)';
+  } else {
+    badge.className = 'session-badge session-badge-closed';
+    badge.textContent = '[MERCADO CERRADO]';
+    badge.title = 'Mercado CME y Cash cerrados (Fin de semana o receso diario 17:00-18:00 ET)';
+  }
+}
+
+// Watchdog de latencia E2E
+function updateWatchdogStatus() {
+  const p = document.getElementById('status-pill');
+  if (!p) return;
+  
+  if (!lastPulseTime) {
+    p.className = 'status-badge status-waiting';
+    p.textContent = 'ΓùÅ Conectando a Supabase...';
+    return;
+  }
+  
+  const now = Date.now();
+  const lagSec = Math.max(0, (now - lastPulseTime) / 1000);
+  
+  const nyStr = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+  const nyDate = new Date(nyStr);
+  const openCme = isCmeMarketOpen(nyDate);
+
+  if (!openCme) {
+    p.className = 'status-badge status-history';
+    p.textContent = `MODO HIST├ôRICO / ├ÜLTIMO CIERRE NY`;
+  } else if (lagSec > 30) {
+    p.className = 'status-badge status-alert-pulsing';
+    p.textContent = `ALERTA: FEED MT5 / ETL DESCONECTADO (${Math.round(lagSec)}s lag)`;
+  } else {
+    p.className = 'status-badge status-connected';
+    p.textContent = `FEED MT5 EN VIVO (${Math.round(lagSec)}s lag)`;
+  }
+}
+
+function badgeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const s = String(text);
+  const u = s.toUpperCase();
+
+  // 1. COMPRA / LONG / UPPER THRESHOLD / DEMANDA / BULLET Γû▓ -> STRICTLY GREEN
+  if (
+    u.includes('UPPER THRESHOLD') ||
+    u.includes('EXPLOSI├ôN ALCISTA') ||
+    u.includes('Γû▓ LONG') ||
+    u.includes('LONG / COMPRA') ||
+    u.includes('COMPRA') ||
+    u.includes('SOBREVENTA') ||
+    u.includes('DEMANDA')
+  ) {
+    return `<span class="badge badge-long">${s}</span>`;
+  }
+
+  // 2. VENTA / SHORT / LOWER THRESHOLD / OFERTA / BULLET Γû╝ -> STRICTLY RED
+  if (
+    u.includes('LOWER THRESHOLD') ||
+    u.includes('EXPLOSI├ôN BAJISTA') ||
+    u.includes('Γû╝ SHORT') ||
+    u.includes('SHORT / VENTA') ||
+    u.includes('VENTA') ||
+    u.includes('SOBRECOMPRA') ||
+    u.includes('OFERTA')
+  ) {
+    return `<span class="badge badge-short">${s}</span>`;
+  }
+
+  // 3. TARGET / TAKE PROFIT / ACELERACI├ôN -> AMBER/GOLD
+  if (u.includes('TAKE PROFIT') || u.includes('ACELERACI├ôN') || u.includes('TARGET')) {
+    return `<span class="badge badge-tp">${s}</span>`;
+  }
+
+  // 4. CONFLUENCIA EXTREMA (Solo para confluencias >= 95%)
+  if (u.includes('95.') || u.includes('96.') || u.includes('97.') || u.includes('98.') || u.includes('99.')) {
+    return `<span class="badge badge-star">${s}</span>`;
+  }
+
+  // 5. NEUTRAL / RANGO / EQUILIBRIO / PIVOTE -> NEUTRAL SLATE
+  if (u.includes('NEUTRAL') || u.includes('RANGO') || u.includes('BASELINE') || u.includes('EQUILIBRIO') || u.includes('PIVOTE') || u.includes('ΓùÅ')) {
+    return `<span class="badge badge-neutral">${s}</span>`;
+  }
+
+  // 6. INFORMATIVO / OTROS
+  if (u.includes('CONF') || u.includes('CONFLUENCIA') || u.includes('%') || u.includes('CALL') || u.includes('PUT')) {
+    return `<span class="badge badge-info">${s}</span>`;
+  }
+
+  return s;
+}
+
+// ==============================================================================
+// TERMINAL BLOOMBERG: ACCIONES DE EJECUCI├ôN, AUDIO SENSORIAL Y COMMAND PALETTE
+// ==============================================================================
+
+// Notificaci├│n flotante Toast
+function showToast(msg, color = '#38bdf8') {
+  const t = document.getElementById('terminal-toast');
+  if (!t) return;
+  if (toastTimeout) clearTimeout(toastTimeout);
+  t.textContent = msg;
+  t.style.borderColor = color;
+  t.style.display = 'flex';
+  toastTimeout = setTimeout(() => {
+    t.style.display = 'none';
+  }, 3200);
+}
+
+// Sintetizador Web Audio API (Dual-tone Chimes para Confirmaci├│n y Anomal├¡as)
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+function playSensoryChime(isBullish) {
+  if (alertsMuted) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+
+    if (isBullish) {
+      // Chime ascendente arm├│nico (D5 -> A5 -> D6)
+      osc1.frequency.setValueAtTime(587.33, now);
+      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+      osc2.frequency.setValueAtTime(880, now + 0.08);
+      osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.28);
+    } else {
+      // Chime descendente institucional (A5 -> D5 -> A4)
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.exponentialRampToValueAtTime(587.33, now + 0.15);
+      osc2.frequency.setValueAtTime(587.33, now + 0.08);
+      osc2.frequency.exponentialRampToValueAtTime(440, now + 0.28);
+    }
+
+    gainNode.gain.setValueAtTime(0.001, now);
+    gainNode.gain.linearRampToValueAtTime(0.12, now + 0.04);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.08);
+    osc1.stop(now + 0.35);
+    osc2.stop(now + 0.35);
+  } catch (e) {
+    console.warn('Audio chime warning:', e);
+  }
+}
+
+// Feedback Sensorial para Anomal├¡as de Momentum (┬▒2.0╧â)
+function triggerSensoryAnomalyAlert(logRetVal, upperThresh, lowerThresh) {
+  if (logRetVal === null || logRetVal === undefined) return;
+  const lr = parseFloat(logRetVal);
+  if (!Number.isFinite(lr)) return;
+
+  const up = (upperThresh !== undefined && upperThresh !== null) ? parseFloat(upperThresh) : 0.0015;
+  const dn = (lowerThresh !== undefined && lowerThresh !== null) ? parseFloat(lowerThresh) : -0.0015;
+
+  const isLongAnomaly = lr >= (Number.isFinite(up) && up > 0 ? up : 0.0015);
+  const isShortAnomaly = lr <= (Number.isFinite(dn) && dn < 0 ? dn : -0.0015);
+
+  if (!isLongAnomaly && !isShortAnomaly) return;
+
+  const now = Date.now();
+  if (now - lastAnomalyAlertTime < 12000) return; // Debounce 12s para evitar fatiga sensorial
+  lastAnomalyAlertTime = now;
+
+  const targetBox = document.getElementById('box-chart-3') || document.getElementById('page-2');
+  const flashClass = isLongAnomaly ? 'flash-long-active' : 'flash-short-active';
+
+  if (targetBox) {
+    targetBox.classList.remove('flash-long-active', 'flash-short-active');
+    void targetBox.offsetWidth;
+    targetBox.classList.add(flashClass);
+    setTimeout(() => targetBox.classList.remove(flashClass), 1500);
+  }
+
+  const regimeBox = document.getElementById('regime-banner-box');
+  if (regimeBox) {
+    regimeBox.classList.remove('flash-long-active', 'flash-short-active');
+    void regimeBox.offsetWidth;
+    regimeBox.classList.add(flashClass);
+    setTimeout(() => regimeBox.classList.remove(flashClass), 1500);
+  }
+
+  playSensoryChime(isLongAnomaly);
+  const dirStr = isLongAnomaly ? 'RUPTURA ALCISTA (+2.0╧â)' : 'RUPTURA BAJISTA (-2.0╧â)';
+  showToast(`ANOMAL├ìA DE MOMENTUM: ${dirStr} (Log-Ret: ${lr > 0 ? '+' : ''}${lr.toFixed(5)})`, isLongAnomaly ? '#10b981' : '#ef4444');
+}
+
+// Foco en el Price Ladder (DOM) sin alterar el scroll global de la ventana
+function focusDomLadder() {
+  const sideEl = document.getElementById('spot-ladder-row-side');
+  if (sideEl && sideEl.offsetParent !== null) {
+    centerSpotLadderSide();
+    showToast('Foco fijado en Spot MT5 (Price Ladder Cockpit)', '#38bdf8');
+  } else {
+    openTab(3);
+    setTimeout(() => {
+      centerSpotLadder();
+    }, 100);
+    showToast('Foco fijado en Secci├│n 4: Price Ladder Cl├ísico', '#38bdf8');
+  }
+  if (window.scrollY !== 0 || window.scrollX !== 0) {
+    window.scrollTo(0, 0);
+  }
+}
+
+// Centrado del Spot en DOM cl├ísico (Secci├│n 4)
+function centerSpotLadder() {
+  const el = document.getElementById('spot-ladder-row');
+  const wrap = el ? (el.closest('.table-wrap') || document.getElementById('workspace-left-analytics')) : null;
+  if (el && wrap) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const relativeTop = elRect.top - wrapRect.top;
+    wrap.scrollTo({
+      top: wrap.scrollTop + relativeTop - (wrap.clientHeight / 2) + (el.clientHeight / 2),
+      behavior: 'smooth'
+    });
+    el.classList.remove('spot-pulse-highlight');
+    void el.offsetWidth;
+    el.classList.add('spot-pulse-highlight');
+    setTimeout(() => el.classList.remove('spot-pulse-highlight'), 3600);
+  }
+  if (window.scrollY !== 0 || window.scrollX !== 0) {
+    window.scrollTo(0, 0);
+  }
+}
+
+// Centrado seguro en contenedor del Spot en DOM lateral (Right Execution Panel)
+function centerSpotLadderSide() {
+  const el = document.getElementById('spot-ladder-row-side');
+  const wrap = document.getElementById('exec-side-table-container');
+  if (el && wrap) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const relativeTop = elRect.top - wrapRect.top;
+    wrap.scrollTo({
+      top: wrap.scrollTop + relativeTop - (wrap.clientHeight / 2) + (el.clientHeight / 2),
+      behavior: 'smooth'
+    });
+    el.classList.remove('spot-pulse-highlight');
+    void el.offsetWidth;
+    el.classList.add('spot-pulse-highlight');
+    setTimeout(() => el.classList.remove('spot-pulse-highlight'), 3600);
+  }
+  if (window.scrollY !== 0 || window.scrollX !== 0) {
+    window.scrollTo(0, 0);
+  }
+}
+
+// CONTROL DE AUTO-CENTRADO Y ESTADO VIVO DEL DOM LADDER
+let autoCenterEnabled = true;
+let isUserInteractingDom = false;
+let userDomInteractionTimer = null;
+let parsedLadderLevels = [];
+let lastRenderedSpot = 0;
+
+function notifyDomUserInteraction() {
+  isUserInteractingDom = true;
+  clearTimeout(userDomInteractionTimer);
+  userDomInteractionTimer = setTimeout(() => {
+    isUserInteractingDom = false;
+  }, 5000);
+}
+
+function initDomScrollListeners() {
+  const container = document.getElementById('exec-side-table-container');
+  if (container && !container.dataset.scrollBound) {
+    container.dataset.scrollBound = 'true';
+    container.addEventListener('wheel', notifyDomUserInteraction, { passive: true });
+    container.addEventListener('touchstart', notifyDomUserInteraction, { passive: true });
+    container.addEventListener('pointerdown', notifyDomUserInteraction, { passive: true });
+  }
+}
+
+function manualCenterSpotSide() {
+  isUserInteractingDom = false;
+  clearTimeout(userDomInteractionTimer);
+  centerSpotLadderSide();
+}
+
+function toggleAutoCenter() {
+  autoCenterEnabled = !autoCenterEnabled;
+  const btn = document.getElementById('btn-auto-center');
+  if (btn) {
+    if (autoCenterEnabled) {
+      btn.className = 'btn-auto-follow active';
+      btn.textContent = 'AUTO: ON';
+      isUserInteractingDom = false;
+      clearTimeout(userDomInteractionTimer);
+      centerSpotLadderSide();
+      showToast('Auto-centrado de Spot activado', '#10b981');
+    } else {
+      btn.className = 'btn-auto-follow';
+      btn.textContent = 'AUTO: OFF';
+      showToast('Auto-centrado pausado (scroll manual en DOM)', '#facc15');
+    }
+  }
+}
+
+// Extrae niveles estructurales de la matriz de ejecuci├│n para re-ordenamiento din├ímico en cada tick
+function parseExecMatrix(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  parsedLadderLevels = rows
+    .filter(r => {
+      const txt = (Array.isArray(r) ? r.join(' ') : String(r)).toUpperCase();
+      return !txt.includes('PRECIO SPOT') && !txt.includes('SPOT MT5');
+    })
+    .map(r => {
+      const rowCells = Array.isArray(r) ? r : [r];
+      const col0 = String(rowCells[0] || '');
+      const match = col0.match(/([\d,]+\.?\d*)\s*pts/i);
+      const px = match ? parseFloat(match[1].replace(/,/g, '')) : 0;
+      return {
+        px: px,
+        wallType: rowCells[1] || '',
+        conf: rowCells[2] || '',
+        act: rowCells[3] || ''
+      };
+    })
+    .filter(l => l.px > 0);
+}
+
+// Reconstruye y anima el DOM Ladder din├ímicamente con cada tick en vivo
+function rebuildLiveLadder(currentSpot, tickDelta = 0) {
+  if (!Number.isFinite(currentSpot) || currentSpot <= 0) return;
+  if (!parsedLadderLevels || parsedLadderLevels.length === 0) {
+    if (currentMasterSnapshot && Array.isArray(currentMasterSnapshot.exec_matrix)) {
+      parseExecMatrix(currentMasterSnapshot.exec_matrix);
+    }
+  }
+  if (!parsedLadderLevels || parsedLadderLevels.length === 0) return;
+
+  // Actualizar Ticker Tape del DOM Ladder
+  const domSpotVal = document.getElementById('dom-spot-val');
+  if (domSpotVal) domSpotVal.textContent = safeLoc(currentSpot, 2);
+  const flashEl = document.getElementById('dom-tick-flash');
+  if (flashEl && tickDelta !== 0) {
+    flashEl.textContent = `${tickDelta > 0 ? '+' : ''}${tickDelta.toFixed(2)}`;
+    flashEl.className = tickDelta > 0 ? 'badge badge-long' : 'badge badge-short';
+  }
+
+  // Recalcular distancias din├ímicas al tickSpot
+  const allLevels = parsedLadderLevels.map(l => {
+    const dist = l.px - currentSpot;
+    return {
+      px: l.px,
+      dist: dist,
+      distStr: `${safeLoc(l.px, 2)} pts (${dist >= 0 ? '+' : ''}${dist.toFixed(0)}p)`,
+      distStrSide: `${safeLoc(l.px, 0)} (${dist >= 0 ? '+' : ''}${dist.toFixed(0)}p)`,
+      wallType: l.wallType,
+      conf: l.conf,
+      act: l.act,
+      isSpot: false
+    };
+  });
+
+  // Agregar fila SPOT din├ímicamente en su posici├│n ordenada exacta
+  const spotAct = tickDelta > 0 ? 'Γû▓ UPTICK' : (tickDelta < 0 ? 'Γû╝ DOWNTICK' : 'ΓùÅ EN TICK');
+  allLevels.push({
+    px: currentSpot,
+    dist: 0,
+    distStr: `${safeLoc(currentSpot, 2)} pts (+0p)`,
+    distStrSide: `${safeLoc(currentSpot, 2)} (+0p)`,
+    wallType: 'PRECIO SPOT MT5 EN VIVO (US100-DEC26)',
+    conf: '100% Γÿà (VIVO)',
+    act: spotAct,
+    isSpot: true
+  });
+
+  // Ordenar descendentemente por precio (Orden DOM institucional)
+  allLevels.sort((a, b) => b.px - a.px);
+
+  // Renderizar la tabla lateral tbl-exec-side y la principal tbl-exec
+  renderLiveLadderGrid('tbl-exec-side', allLevels, currentSpot, tickDelta, true);
+  renderLiveLadderGrid('tbl-exec', allLevels, currentSpot, tickDelta, false);
+
+  lastRenderedSpot = currentSpot;
+
+  if (autoCenterEnabled && !isUserInteractingDom) {
+    centerSpotLadderSide();
+  }
+}
+
+// Renderizado de las filas del DOM Ladder con barras term├│metro y resaltado reactivo
+function renderLiveLadderGrid(tableId, levels, spot, tickDelta, isSide) {
+  const t = document.getElementById(tableId);
+  if (!t) return;
+
+  const headers = isSide 
+    ? ["Nivel / Distancia", "Muro Institucional", "Confluencia", "Acci├│n"]
+    : ["Nivel de Precio / Distancia", "Muro Institucional", "Confluencia (>80%)", "Acci├│n Operativa / Directiva"];
+  const th = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+
+  const spotIndex = levels.findIndex(l => l.isSpot);
+
+  const tb = levels.map((l, idx) => {
+    const isSpotRow = l.isSpot;
+    let rowClass = '';
+    let rowId = isSpotRow ? (isSide ? 'id="spot-ladder-row-side"' : 'id="spot-ladder-row"') : '';
+
+    if (isSpotRow) {
+      const flashClass = tickDelta > 0 ? 'tick-flash-up' : (tickDelta < 0 ? 'tick-flash-down' : '');
+      rowClass = `dom-spot-row ${flashClass}`;
+    } else if (spotIndex >= 0) {
+      rowClass = idx < spotIndex ? 'ladder-row-offer' : 'ladder-row-demand';
+    }
+
+    const priceText = isSide ? l.distStrSide : l.distStr;
+
+    let thermoBar = '';
+    if (!isSpotRow) {
+      const pts = Math.abs(l.dist);
+      if (pts <= 120) {
+        const fillPct = Math.min(100, Math.max(8, ((120 - pts) / 120) * 100));
+        const isOffer = (spotIndex >= 0 && idx < spotIndex);
+        const barGradient = isOffer
+          ? 'linear-gradient(90deg, rgba(239, 68, 68, 0.4), rgba(249, 115, 22, 0.6))'
+          : 'linear-gradient(90deg, rgba(16, 185, 129, 0.4), rgba(52, 211, 153, 0.6))';
+        thermoBar = `<div class="thermometer-bar" style="width:${fillPct}%; background:${barGradient};"></div>`;
+      }
+    }
+
+    const col0Content = isSpotRow
+      ? `<div class="dom-price-text"><span style="color:var(--cyan); font-weight:900;">[SPOT] ${priceText}</span></div>`
+      : `${thermoBar}<div class="dom-price-text"><span>${priceText}</span></div>`;
+
+    const td0 = `<td class="dom-price-cell">${col0Content}</td>`;
+    const td1 = `<td>${badgeHtml(l.wallType)}</td>`;
+    const td2 = `<td>${badgeHtml(l.conf)}</td>`;
+    const td3 = `<td>${badgeHtml(l.act)}</td>`;
+
+    return `<tr ${rowId} class="${rowClass}">${td0}${td1}${td2}${td3}</tr>`;
+  }).join('');
+
+  t.innerHTML = `<thead>${th}</thead><tbody>${tb}</tbody>`;
+}
+
+// Renderizado compacto de Decisi├│n para la Cabina Lateral DOM (Ahorro vertical)
+function renderSideDecision(containerId, dec) {
+  const el = document.getElementById(containerId);
+  if (!el || !dec) return;
+
+  const confVal = safeFloat(dec.confluence_pct, 90.0);
+  const colorHex = dec.color_hex || '#38bdf8';
+  const bgHex = dec.bg_hex || 'rgba(56, 189, 248, 0.08)';
+  const rrVal = safeFloat(dec.rr_ratio, 1.8);
+  const triggerTxt = dec.trigger_card || 'Limit en bordes clave';
+  const stopTxt = dec.stop_card || 'Quiebre estructural opuesto';
+  const targetTxt = dec.target_card || 'Baseline VWAP / Mediana';
+
+  el.innerHTML = `
+    <div style="border-left: 4px solid ${colorHex}; background: ${bgHex}; padding: 7px 10px; border-radius: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+        <span style="font-size: 12px; font-weight: 900; color: ${colorHex};">ΓùÅ ${dec.signal || 'EVALUANDO'}</span>
+        <div style="display:flex; gap:4px;">
+          <span class="badge badge-star" style="font-size: 9.5px; padding: 2px 5px;">${confVal.toFixed(1)}% Γÿà</span>
+          <span class="badge badge-star" style="font-size: 9.5px; padding: 2px 5px;">R:R ${rrVal.toFixed(2)}x</span>
+        </div>
+      </div>
+      <div style="font-size: 11px; color: #ffffff; margin-top: 3px; line-height: 1.3;">
+        <strong>DIRECTIVA:</strong> ${dec.action || dec.action_text || ''}
+      </div>
+      <details style="margin-top: 4px;">
+        <summary style="font-size: 10px; color: var(--muted); cursor: pointer; font-weight: 700;">Ver Gatillo / Stop / Target</summary>
+        <div style="font-size: 10.5px; color: #cbd5e1; margin-top: 4px; line-height: 1.35; background: rgba(0,0,0,0.35); padding: 5px 8px; border-radius: 4px;">
+          <div><strong>Gatillo:</strong> ${triggerTxt}</div>
+          <div><strong>Stop:</strong> ${stopTxt}</div>
+          <div><strong>Targets:</strong> ${targetTxt}</div>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+// Ocultar / Mostrar telemetr├¡a matem├ítica cruda
+function toggleMacroTelemetry() {
+  const accordions = document.querySelectorAll('.telemetry-accordion');
+  if (accordions.length === 0) {
+    showToast('No se encontraron paneles de telemetr├¡a', '#94a3b8');
+    return;
+  }
+  const anyOpen = Array.from(accordions).some(a => a.open);
+  accordions.forEach(a => { a.open = !anyOpen; });
+  showToast(anyOpen ? 'Telemetr├¡a matem├ítica cruda oculta' : 'Telemetr├¡a matem├ítica desplegada', '#facc15');
+}
+
+// Purga limpia de cache local y recarga forzada
+function clearLocalCache() {
+  try {
+    localStorage.removeItem('nq_cached_snapshot');
+    showToast('Cache local purgada. Recargando snapshot limpio...', '#38bdf8');
+    loadLatestSnapshot();
+  } catch (e) {
+    console.error('Error purgando cache local:', e);
+  }
+}
+
+// Silenciar / Activar alertas sensoriales
+function toggleAlertsMute() {
+  alertsMuted = !alertsMuted;
+  try {
+    localStorage.setItem('nq_alerts_muted', alertsMuted ? 'true' : 'false');
+  } catch (e) {}
+  updateAlertsButtonUI();
+  showToast(alertsMuted ? 'Alertas sensoriales silenciadas' : 'Alertas sensoriales activadas', alertsMuted ? '#94a3b8' : '#10b981');
+}
+
+function updateAlertsButtonUI() {
+  const btn = document.getElementById('btn-toggle-alerts');
+  const lbl = document.getElementById('alert-lbl');
+  if (!btn) return;
+  if (alertsMuted) {
+    btn.classList.add('muted');
+    if (lbl) lbl.textContent = 'ALERTAS: MUTED';
+  } else {
+    btn.classList.remove('muted');
+    if (lbl) lbl.textContent = 'ALERTAS: ON';
+  }
+}
+
+// Alternar entre Vista de Pesta├▒as y Vista Modular Launchpad (Todos los widgets)
+function toggleLaunchpadMultiView() {
+  workspaceMultiView = !workspaceMultiView;
+  const wrap = document.getElementById('dashboard-wrapper');
+  const btn = document.getElementById('btn-toggle-multiview');
+  if (wrap) wrap.classList.toggle('workspace-mode-launchpad', workspaceMultiView);
+  if (btn) {
+    btn.textContent = workspaceMultiView ? 'VISTA PESTA├æAS' : 'VISTA MULTIPANEL';
+  }
+  showToast(workspaceMultiView ? 'Vista multipanel activa: todos los widgets visibles' : 'Vista de pesta├▒as activa', '#38bdf8');
+}
+
+let cockpitMode = true;
+function toggleCockpitMode() {
+  cockpitMode = !cockpitMode;
+  const wrap = document.getElementById('dashboard-wrapper');
+  const btn = document.getElementById('btn-toggle-cockpit');
+  if (wrap) wrap.classList.toggle('cockpit-mode-active', cockpitMode);
+  if (btn) {
+    btn.classList.toggle('active', cockpitMode);
+    btn.textContent = cockpitMode ? 'VISTA COCKPIT (HUD)' : 'VISTA PESTA├æAS';
+  }
+}
+
+// ==============================================================================
+// REGISTRO Y GESTOR DEL COMMAND PALETTE (CTRL + K)
+// ==============================================================================
+const COMMANDS = [
+  {
+    id: 'focus-dom',
+    name: 'focus DOM',
+    alias: ['focus', 'dom', 'ladder', 'spot', 'centrar', 'precio'],
+    icon: '[DOM]',
+    badge: 'EJECUCI├ôN',
+    desc: 'Centra y resalta la fila Spot MT5 en el Price Ladder DOM',
+    action: () => focusDomLadder()
+  },
+  {
+    id: 'toggle-macro',
+    name: 'toggle macro',
+    alias: ['telemetry', 'math', 'garch', 'parametros', 'crudo', 'ocultar', 'ver'],
+    icon: '[MLE]',
+    badge: 'ANALYTICS',
+    desc: 'Oculta o muestra el panel de telemetr├¡a y par├ímetros matem├íticos crudos',
+    action: () => toggleMacroTelemetry()
+  },
+  {
+    id: 'test-adf',
+    name: 'test adf',
+    alias: ['adf', 'dickey-fuller', 'estacionario', 'estacionariedad', 'unit root', 'raiz unitaria', 'auditoria'],
+    icon: '[ADF]',
+    badge: 'AUDIT',
+    desc: 'Verifica la prueba de ra├¡z unitaria ADF y condici├│n de estacionariedad',
+    action: () => {
+      const k = currentMasterSnapshot && currentMasterSnapshot.kpis ? currentMasterSnapshot.kpis : {};
+      const isStat = k.adf_is_stationary !== false;
+      const str = k.adf_status_str || 'Prueba ADF: Estacionaria (p<0.05)';
+      const stat = typeof k.adf_stat === 'number' ? k.adf_stat.toFixed(3) : '-';
+      showToast(`${str} | Stat: ${stat}`, isStat ? '#10b981' : '#ef4444');
+    }
+  },
+  {
+    id: 'clear-cache',
+    name: 'clear cache',
+    alias: ['reload', 'refresh', 'purge', 'reset', 'recargar', 'limpiar'],
+    icon: '[SYS]',
+    badge: 'SISTEMA',
+    desc: 'Limpia localStorage y fuerza una recarga limpia del ├║ltimo estado de Supabase',
+    action: () => clearLocalCache()
+  },
+  {
+    id: 'mute-alerts',
+    name: 'mute alerts',
+    alias: ['sound', 'audio', 'silence', 'chime', 'alert', 'silenciar', 'sonido'],
+    icon: '[AUD]',
+    badge: 'AUDIO',
+    desc: 'Silencia o reactiva las alertas sensoriales y chimes de anomal├¡as',
+    action: () => toggleAlertsMute()
+  },
+  {
+    id: 'launchpad-mode',
+    name: 'toggle launchpad',
+    alias: ['all', 'todos', 'multiview', 'expand', 'widgets', 'modular'],
+    icon: '[ALL]',
+    badge: 'LAYOUT',
+    desc: 'Alterna entre la estaci├│n modular (todos los widgets) y pesta├▒as',
+    action: () => toggleLaunchpadMultiView()
+  },
+  {
+    id: 'sec-1',
+    name: 'section 1',
+    alias: ['garch', 'monte carlo', 'macro', 'conos', 'colas'],
+    icon: '[SEC1]',
+    badge: 'NAV',
+    desc: 'Navegar a Secci├│n 1: Conos de Probabilidad Monte Carlo + GJR-GARCH',
+    action: () => { openTab(0); showToast('Navegando a Secci├│n 1: Macro GARCH'); }
+  },
+  {
+    id: 'sec-2',
+    name: 'section 2',
+    alias: ['gex', 'liquidez', 'crr', 'muros', 'gamma', 'dealers'],
+    icon: '[SEC2]',
+    badge: 'NAV',
+    desc: 'Navegar a Secci├│n 2: Perfil GEX + ├ürbol Binomial CRR + Liquidez',
+    action: () => { openTab(1); showToast('Navegando a Secci├│n 2: Liquidez GEX'); }
+  },
+  {
+    id: 'sec-3',
+    name: 'section 3',
+    alias: ['micro', 'log return', 'anomalia', 'momentum', 'hurst', 'vwap'],
+    icon: '[SEC3]',
+    badge: 'NAV',
+    desc: 'Navegar a Secci├│n 3: Microestructura 5m, VWAP y Anomal├¡as de Retornos',
+    action: () => { openTab(2); showToast('Navegando a Secci├│n 3: Microestructura 5m'); }
+  },
+  {
+    id: 'sec-5',
+    name: 'section 5',
+    alias: ['estrategias', 'strats', 'mt5', 'arbiter', 'regimen'],
+    icon: '[SEC5]',
+    badge: 'NAV',
+    desc: 'Navegar a Secci├│n 5: Modelos Cuantitativos y Estrategias Nivel 1 MT5',
+    action: () => { openTab(4); showToast('Navegando a Secci├│n 5: Estrategias MT5'); }
+  },
+  {
+    id: 'cfg-modal',
+    name: 'settings',
+    alias: ['config', 'ajustes', 'credenciales', 'supabase', 'conexion'],
+    icon: '[CFG]',
+    badge: 'CONFIG',
+    desc: 'Abrir ventana de configuraci├│n de credenciales de Supabase',
+    action: () => openConfigModal()
+  }
+];
+
+function openCommandPalette() {
+  const modal = document.getElementById('cmd-palette-backdrop');
+  const input = document.getElementById('cmd-palette-input');
+  if (!modal) return;
+  paletteOpen = true;
+  modal.style.display = 'flex';
+  if (input) {
+    input.value = '';
+    filterCommands('');
+    setTimeout(() => input.focus(), 60);
+  }
+}
+
+function closeCommandPalette() {
+  const modal = document.getElementById('cmd-palette-backdrop');
+  if (modal) modal.style.display = 'none';
+  paletteOpen = false;
+}
+
+function handlePaletteBackdropClick(e) {
+  if (e.target && e.target.id === 'cmd-palette-backdrop') {
+    closeCommandPalette();
+  }
+}
+
+function filterCommands(query) {
+  let q = (query || '').trim().toLowerCase();
+  if (q.startsWith('>')) q = q.substring(1).trim();
+
+  if (!q) {
+    filteredCommands = [...COMMANDS];
+  } else {
+    filteredCommands = COMMANDS.filter(cmd => {
+      if (cmd.name.toLowerCase().includes(q)) return true;
+      if (cmd.desc && cmd.desc.toLowerCase().includes(q)) return true;
+      if (cmd.badge && cmd.badge.toLowerCase().includes(q)) return true;
+      if (Array.isArray(cmd.alias)) {
+        return cmd.alias.some(a => a.toLowerCase().includes(q));
+      }
+      return false;
+    });
+  }
+
+  paletteSelectedIndex = 0;
+  renderPaletteList();
+}
+
+function renderPaletteList() {
+  const listEl = document.getElementById('cmd-palette-list');
+  if (!listEl) return;
+
+  if (filteredCommands.length === 0) {
+    listEl.innerHTML = `<div class="cmd-palette-empty">No se encontraron comandos para esa consulta</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filteredCommands.map((cmd, idx) => {
+    const isSelected = idx === paletteSelectedIndex;
+    return `
+      <div class="cmd-palette-item ${isSelected ? 'selected' : ''}" onclick="executePaletteCommand(${idx})">
+        <div class="cmd-item-icon">${cmd.icon || '[CMD]'}</div>
+        <div class="cmd-item-info">
+          <div class="cmd-item-title">
+            <span class="cmd-name">&gt; ${cmd.name}</span>
+            <span class="cmd-item-badge">${cmd.badge || 'ACCION'}</span>
+          </div>
+          <div class="cmd-item-desc">${cmd.desc || ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const activeEl = listEl.querySelector('.cmd-palette-item.selected');
+  if (activeEl) {
+    activeEl.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function executePaletteCommand(index) {
+  if (index < 0 || index >= filteredCommands.length) return;
+  const cmd = filteredCommands[index];
+  closeCommandPalette();
+  if (cmd && typeof cmd.action === 'function') {
+    cmd.action();
+  }
+}
+
+// Listener Global de Atajo Ctrl+K / Cmd+K y Teclas de Navegaci├│n
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (paletteOpen) {
+      closeCommandPalette();
+    } else {
+      openCommandPalette();
+    }
+    return;
+  }
+
+  if (paletteOpen) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeCommandPalette();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredCommands.length > 0) {
+        paletteSelectedIndex = (paletteSelectedIndex + 1) % filteredCommands.length;
+        renderPaletteList();
+      }
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filteredCommands.length > 0) {
+        paletteSelectedIndex = (paletteSelectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
+        renderPaletteList();
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executePaletteCommand(paletteSelectedIndex);
+      return;
+    }
+  }
+});
+
+// Anclaje estricto de la ventana en (0, 0) para impedir desplazamientos fuera de vista
+window.addEventListener('scroll', () => {
+  if (window.scrollY !== 0 || window.scrollX !== 0) {
+    window.scrollTo(0, 0);
+  }
+});
+
+// Renderizado de la tabla general o Price Ladder (DOM)
+function renderTable(tableId, headers, rows) {
+  const t = document.getElementById(tableId);
+  if (!t) return;
+  const th = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+  
+  if (tableId === 'tbl-exec' || tableId === 'tbl-exec-side') {
+    const isSide = tableId === 'tbl-exec-side';
+    let spotIndex = -1;
+    (rows || []).forEach((r, idx) => {
+      const rowTxt = (Array.isArray(r) ? r.join(' ') : String(r)).toUpperCase();
+      if (rowTxt.includes('PRECIO SPOT') || rowTxt.includes('SPOT MT5')) {
+        spotIndex = idx;
+      }
+    });
+
+    const tb = (rows || []).map((r, idx) => {
+      const isSpotRow = idx === spotIndex;
+      let rowClass = '';
+      let rowId = isSpotRow ? (isSide ? 'id="spot-ladder-row-side"' : 'id="spot-ladder-row"') : '';
+
+      if (isSpotRow) {
+        rowClass = 'dom-spot-row';
+      } else if (spotIndex >= 0) {
+        rowClass = idx < spotIndex ? 'ladder-row-offer' : 'ladder-row-demand';
+      }
+
+      const rowCells = Array.isArray(r) ? r : [r];
+      const tds = rowCells.map((c, colIdx) => {
+        if (colIdx === 0 && !isSpotRow) {
+          // Extraer puntos de distancia ej: "+43p" o "-18p"
+          const m = String(c).match(/([+-]?\d+)\s*p/i);
+          let thermoBar = '';
+          if (m) {
+            const pts = Math.abs(parseInt(m[1], 10));
+            if (pts <= 100) {
+              const fillPct = Math.min(100, Math.max(8, ((100 - pts) / 100) * 100));
+              const isOffer = (spotIndex >= 0 && idx < spotIndex);
+              const barGradient = isOffer
+                ? 'linear-gradient(90deg, rgba(239, 68, 68, 0.4), rgba(249, 115, 22, 0.6))'
+                : 'linear-gradient(90deg, rgba(16, 185, 129, 0.4), rgba(52, 211, 153, 0.6))';
+              thermoBar = `<div class="thermometer-bar" style="width:${fillPct}%; background:${barGradient};"></div>`;
+            }
+          }
+          return `<td class="dom-price-cell">${thermoBar}<div class="dom-price-text"><span>${c}</span></div></td>`;
+        }
+        if (colIdx === 0 && isSpotRow) {
+          return `<td class="dom-price-cell" style="color:var(--cyan);"><div class="dom-price-text"><span>[SPOT] ${c}</span></div></td>`;
+        }
+        return `<td>${badgeHtml(c)}</td>`;
+      }).join('');
+
+      return `<tr ${rowId} class="${rowClass}">${tds}</tr>`;
+    }).join('');
+
+    t.innerHTML = `<thead>${th}</thead><tbody>${tb}</tbody>`;
+    return;
+  }
+
+  if (tableId === 'tbl-cone') {
+    const tb = (rows || []).map(r => {
+      const rowCells = Array.isArray(r) ? r : [r];
+      const tds = rowCells.map((c, colIdx) => {
+        if (colIdx === 0) return `<td style="font-weight:700; color:#e2e8f0;">${c}</td>`;
+        if (colIdx === 1 || colIdx === 2) return `<td><span class="badge badge-long" style="font-weight:700;">${c}</span></td>`;
+        if (colIdx === 3) return `<td><span class="badge badge-neutral" style="font-weight:700;">${c}</span></td>`;
+        if (colIdx === 4 || colIdx === 5) return `<td><span class="badge badge-short" style="font-weight:700;">${c}</span></td>`;
+        return `<td>${badgeHtml(c)}</td>`;
+      }).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    t.innerHTML = `<thead>${th}</thead><tbody>${tb}</tbody>`;
+    return;
+  }
+
+  if (tableId === 'tbl-tail') {
+    const tb = (rows || []).map(r => {
+      const rowCells = Array.isArray(r) ? r : [r];
+      const tds = rowCells.map((c, colIdx) => {
+        if (colIdx === 0) return `<td style="font-weight:700; color:#e2e8f0;">${c}</td>`;
+        if (colIdx === 1) return `<td><span class="badge badge-long" style="font-weight:700;">${c}</span></td>`;
+        if (colIdx === 2) return `<td><span class="badge badge-short" style="font-weight:700;">${c}</span></td>`;
+        if (colIdx === 3 || colIdx === 4) return `<td><span class="badge badge-short" style="font-weight:700; opacity:0.9;">${c}</span></td>`;
+        return `<td>${badgeHtml(c)}</td>`;
+      }).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    t.innerHTML = `<thead>${th}</thead><tbody>${tb}</tbody>`;
+    return;
+  }
+
+  // Tablas est├índar
+  const tb = (rows || []).map(r => {
+    const rowCells = Array.isArray(r) ? r : [r];
+    const tds = rowCells.map(c => `<td>${badgeHtml(c)}</td>`).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('');
+  t.innerHTML = `<thead>${th}</thead><tbody>${tb}</tbody>`;
+}
+
+// Renderizado de Decisiones con 3 Tarjetas de Ejecuci├│n
+function renderDecision(containerId, dec) {
+  const el = document.getElementById(containerId);
+  if (!el || !dec) return;
+
+  const confVal = safeFloat(dec.confluence_pct, null);
+  let confBadge = '';
+  if (confVal !== null) {
+    confBadge = confVal >= 80.0
+      ? `<span class="badge badge-star">CONFLUENCIA: ${confVal.toFixed(1)}%</span>`
+      : `<span class="badge badge-info">CONFLUENCIA: ${confVal.toFixed(1)}%</span>`;
+  }
+
+  const rrVal = safeFloat(dec.rr_ratio, null);
+  const rrBadge = rrVal !== null ? `<span class="badge badge-star">RATIO R:R ${rrVal.toFixed(2)}x</span>` : '';
+
+  const triggerTxt = dec.trigger_card || 'A la espera de confirmaci├│n cuantitativa de momentum...';
+  const stopTxt = dec.stop_card || 'Stop estructural en muro institucional opuesto / 1 ATR';
+  const targetTxt = dec.target_card || 'TP1: VWAP / TP2: Borde estructural opuesto';
+  const colorHex = dec.color_hex || '#38bdf8';
+  const bgHex = dec.bg_hex || 'rgba(56, 189, 248, 0.08)';
+
+  el.innerHTML = `
+    <div class="decision-banner" style="border-left: 6px solid ${colorHex}; background: ${bgHex};">
+      <div class="decision-header">
+        <div>
+          <span class="decision-module">${dec.module || dec.module_name || ''}</span>
+          <div class="decision-signal" style="color: ${colorHex};">
+            ΓùÅ DECISI├ôN MATEM├üTICA: ${dec.signal || 'EVALUANDO'} ΓÇö ${dec.sub_label || ''}
+          </div>
+        </div>
+        <div>${confBadge} ${rrBadge}</div>
+      </div>
+      <div class="decision-action"><strong>ACCI├ôN OPERATIVA:</strong> ${dec.action || dec.action_text || ''}</div>
+      <div class="decision-metrics">${dec.metrics || dec.metrics_highlight || ''}</div>
+      <div class="exec-card-grid">
+        <div class="exec-card exec-trigger">
+          <div class="exec-card-title">GATILLO DE ENTRADA</div>
+          <div class="exec-card-body">${triggerTxt}</div>
+        </div>
+        <div class="exec-card exec-stop">
+          <div class="exec-card-title">INVALIDACI├ôN / STOP ESTRUCTURAL</div>
+          <div class="exec-card-body">${stopTxt}</div>
+        </div>
+        <div class="exec-card exec-target">
+          <div class="exec-card-title">TARGETS / ESCALADO</div>
+          <div class="exec-card-body">${targetTxt}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateLogReturnChart(series) {
+  if (!series || !series.log_ret || !window.Chart) return;
+  const ctx = document.getElementById('chartLogReturn');
+  if (!ctx) return;
+
+  const labels = series.log_ret_timestamps || [];
+  const logRet = series.log_ret || [];
+  const upper = series.upper_threshold || [];
+  const lower = series.lower_threshold || [];
+  const isAnom = series.is_anomaly || [];
+
+  const pointColors = isAnom.map(a => a ? '#f97316' : '#94a3b8');
+  const pointRadius = isAnom.map(a => a ? 5 : 0);
+
+  if (lrChart) {
+    lrChart.data.labels = labels;
+    lrChart.data.datasets[0].data = logRet;
+    lrChart.data.datasets[0].pointBackgroundColor = pointColors;
+    lrChart.data.datasets[0].pointRadius = pointRadius;
+    lrChart.data.datasets[1].data = upper;
+    lrChart.data.datasets[2].data = lower;
+    lrChart.update('none');
+    return;
+  }
+
+  lrChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Log Return 5m',
+          data: logRet,
+          borderColor: '#94a3b8',
+          borderWidth: 1.5,
+          pointBackgroundColor: pointColors,
+          pointRadius: pointRadius,
+          tension: 0.1,
+        },
+        {
+          label: 'Upper Threshold (+2.0╧â)',
+          data: upper,
+          borderColor: '#ef4444',
+          borderDash: [5, 5],
+          borderWidth: 1.5,
+          pointRadius: 0,
+        },
+        {
+          label: 'Lower Threshold (-2.0╧â)',
+          data: lower,
+          borderColor: '#10b981',
+          borderDash: [5, 5],
+          borderWidth: 1.5,
+          pointRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#cbd5e1', font: { size: 11, weight: 'bold' } } }
+      },
+      scales: {
+        x: {
+          offset: false,
+          ticks: { color: '#94a3b8', maxTicksLimit: 10 },
+          grid: { color: 'rgba(51, 65, 85, 0.4)' }
+        },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.4)' } }
+      }
+    }
+  });
+}
+
+// Aplica actualizaci├│n r├ípida (Tick Stream ultraligero - latencia < 2s)
+function applyTickUpdate(tick) {
+  if (!tick) return;
+  lastPulseTime = Date.now();
+  let tickDelta = 0;
+  if (Number.isFinite(parseFloat(tick.spot))) {
+    const newSpot = parseFloat(tick.spot);
+    if (lastKnownSpot > 0 && Math.abs(newSpot - lastKnownSpot) > 0.001) {
+      tickDelta = newSpot - lastKnownSpot;
+    }
+    lastKnownSpot = newSpot;
+    const spotEl = document.getElementById('kpi-spot');
+    if (spotEl) spotEl.textContent = safeLoc(newSpot, 2);
+  }
+  const k = tick.kpis || {};
+
+  if (k.vwap_globex || k.vwap_5m) {
+    const gv = k.vwap_globex || k.vwap_5m;
+    const gz = k.z_vwap_globex ?? k.z_vwap_5;
+    const zTxt = Number.isFinite(parseFloat(gz)) ? ` (${gz > 0 ? '+' : ''}${parseFloat(gz).toFixed(2)}╧â)` : '';
+    const vEl = document.getElementById('kpi-vwap-globex');
+    if (vEl) vEl.textContent = `${safeLoc(gv, 1)}${zTxt}`;
+  }
+  if (k.vwap_rth) {
+    const zr = k.z_vwap_rth;
+    const zTxt = Number.isFinite(parseFloat(zr)) ? ` (${zr > 0 ? '+' : ''}${parseFloat(zr).toFixed(2)}╧â)` : '';
+    const vrEl = document.getElementById('kpi-vwap-rth');
+    if (vrEl) vrEl.textContent = `${safeLoc(k.vwap_rth, 1)}${zTxt}`;
+  }
+  if (k.log_ret_5m !== undefined && k.log_ret_5m !== null) {
+    const lr = parseFloat(k.log_ret_5m);
+    if (Number.isFinite(lr)) {
+      const lrEl = document.getElementById('kpi-lr');
+      if (lrEl) lrEl.textContent = `${lr > 0 ? '+' : ''}${lr.toFixed(5)}`;
+      triggerSensoryAnomalyAlert(lr, k.upper_threshold_5m || k.upper_threshold, k.lower_threshold_5m || k.lower_threshold);
+    }
+  }
+  if (k.spread_pts !== undefined && k.spread_pts !== null) {
+    const sp = parseFloat(k.spread_pts);
+    if (Number.isFinite(sp)) {
+      const spEl = document.getElementById('kpi-spread');
+      if (spEl) spEl.textContent = `${sp.toFixed(2)}p`;
+      const domSpEl = document.getElementById('dom-spread-val');
+      if (domSpEl) domSpEl.textContent = `${sp.toFixed(2)}p`;
+    }
+  }
+  if (k.rvol_20d !== undefined || k.tick_speed !== undefined) {
+    const rvolStr = safeNum(k.rvol_20d, 2, '', 'x');
+    const spdStr = safeNum(k.tick_speed, 1, '', ' t/s');
+    const tapeEl = document.getElementById('kpi-tape');
+    if (tapeEl) {
+      tapeEl.textContent = (rvolStr !== '--' || spdStr !== '--') ? `${rvolStr} | ${spdStr}` : '--';
+    }
+    const domTapeEl = document.getElementById('dom-tape-spd');
+    if (domTapeEl) domTapeEl.textContent = spdStr !== '--' ? spdStr : (rvolStr !== '--' ? `${rvolStr}` : '--');
+  }
+  if (k.gap_pts !== undefined && k.gap_pts !== null) {
+    const gapPts = parseFloat(k.gap_pts);
+    if (Number.isFinite(gapPts)) {
+      const gapEl = document.getElementById('kpi-gap');
+      if (gapEl) {
+        const sign = gapPts > 0 ? '+' : '';
+        gapEl.textContent = `${sign}${gapPts.toFixed(1)}p (${sign}${safeNum(k.gap_pct, 2)}%)`;
+        gapEl.style.color = gapPts >= 0 ? 'var(--long)' : 'var(--short)';
+      }
+    }
+  }
+
+  // RECONSTRUIR Y ANIMAR EL DOM LADDER EN TIEMPO REAL CON EL NUEVO SPOT
+  if (lastKnownSpot > 0) {
+    rebuildLiveLadder(lastKnownSpot, tickDelta);
+  }
+
+  // DIRECTIVA V9: Actualizaciones reactivas de microestructura estoc├ística
+  if (k.hmm_regime_label) {
+    const regEl = document.getElementById('regime-status-text');
+    if (regEl) regEl.textContent = k.hmm_regime_label;
+  }
+  if (k.hawkes_call_label || k.hawkes_put_label) {
+    const hwkEl = document.getElementById('kpi-hawkes');
+    if (hwkEl) hwkEl.textContent = `${k.hawkes_call_label || '--'}`;
+  }
+  if (k.fred_rate_3m) {
+    const fredEl = document.getElementById('kpi-fred');
+    if (fredEl) {
+      const rPct = (k.fred_rate_3m * 100).toFixed(2);
+      const carryPts = typeof k.cost_of_carry_pts === 'number' ? ` (${k.cost_of_carry_pts > 0 ? '+' : ''}${k.cost_of_carry_pts.toFixed(0)}p)` : '';
+      fredEl.textContent = `${rPct}%${carryPts}`;
+    }
+  }
+  const riskAlertEl = document.getElementById('hud-risk-alert');
+  if (riskAlertEl && k.risk_audit_is_valid !== undefined) {
+    riskAlertEl.style.display = k.risk_audit_is_valid ? 'none' : 'block';
+    if (!k.risk_audit_is_valid && k.risk_audit_status) {
+      riskAlertEl.textContent = k.risk_audit_status;
+    }
+  }
+
+  updateWatchdogStatus();
+}
+
+// Aplica snapshot completo (Payload Macro Cuantitativo con Fusi├│n Defensiva)
+function applySnapshot(row) {
+  if (!row) return;
+
+  // Registrar timestamp del pulso para el Watchdog
+  if (row.updated_at) {
+    lastPulseTime = new Date(row.updated_at).getTime();
+  } else {
+    lastPulseTime = Date.now();
+  }
+  if (row.session_status) currentSessionStatus = row.session_status;
+  if (Number.isFinite(parseFloat(row.spot))) lastKnownSpot = parseFloat(row.spot);
+
+  // FUSI├ôN ACUMULATIVA DEFENSIVA: Jam├ís vaciar tablas con arrays nulos o vac├¡os
+  if (Array.isArray(row.cone_table) && row.cone_table.length > 0) currentMasterSnapshot.cone_table = row.cone_table;
+  if (Array.isArray(row.tail_table) && row.tail_table.length > 0) currentMasterSnapshot.tail_table = row.tail_table;
+  if (Array.isArray(row.gex_table) && row.gex_table.length > 0) currentMasterSnapshot.gex_table = row.gex_table;
+  if (Array.isArray(row.gex_summary) && row.gex_summary.length > 0) currentMasterSnapshot.gex_summary = row.gex_summary;
+  if (Array.isArray(row.log_anom_table) && row.log_anom_table.length > 0) currentMasterSnapshot.log_anom_table = row.log_anom_table;
+  if (Array.isArray(row.micro_table) && row.micro_table.length > 0) currentMasterSnapshot.micro_table = row.micro_table;
+  if (Array.isArray(row.exec_matrix) && row.exec_matrix.length > 0) currentMasterSnapshot.exec_matrix = row.exec_matrix;
+  
+  const incomingStrats = row.strategies_table || 
+                         (row.decisions && row.decisions.strategies_table) ||
+                         (row.chart_series && row.chart_series.strategies_table) ||
+                         (row.kpis && row.kpis.strategies_table);
+  if (Array.isArray(incomingStrats) && incomingStrats.length > 0) {
+    currentMasterSnapshot.strategies_table = incomingStrats;
+  }
+
+  if (row.decisions && Object.keys(row.decisions).length > 0) {
+    currentMasterSnapshot.decisions = Object.assign({}, currentMasterSnapshot.decisions || {}, row.decisions);
+  }
+  if (row.chart_series && Object.keys(row.chart_series).length > 0) {
+    currentMasterSnapshot.chart_series = Object.assign({}, currentMasterSnapshot.chart_series || {}, row.chart_series);
+  }
+  if (row.kpis) {
+    currentMasterSnapshot.kpis = Object.assign({}, currentMasterSnapshot.kpis || {}, row.kpis);
+  }
+
+  // Header y Fechas de datos
+  const dateRangeStr = row.data_range || (row.kpis && row.kpis.data_range) || `${row.data_start || ''} ΓåÆ ${row.data_end || row.timestamp_ny || ''}`;
+  const kpiRangeEl = document.getElementById('kpi-range');
+  if (kpiRangeEl) kpiRangeEl.textContent = dateRangeStr || 'Cargado';
+  const hdrSubEl = document.getElementById('hdr-sub');
+  if (hdrSubEl) {
+    hdrSubEl.textContent = `Sesi├│n Wall Street: ${row.session_status || currentSessionStatus} | ├Ültima Vela: ${row.timestamp_ny || ''} | Rango: ${dateRangeStr} | Fuente: ${row.source_feed || 'MT5'}`;
+  }
+
+  // Guardar en cache local solo cuando el snapshot est├í verdaderamente completo (sin im├ígenes pesadas para no exceder cuota)
+  if (currentMasterSnapshot.exec_matrix && currentMasterSnapshot.exec_matrix.length > 0 &&
+      currentMasterSnapshot.tail_table && currentMasterSnapshot.tail_table.length > 0) {
+    try {
+      const cleanSnap = {
+        spot: row.spot || lastKnownSpot,
+        symbol: row.symbol || 'US100-DEC26',
+        session_status: row.session_status || currentSessionStatus,
+        timestamp_ny: row.timestamp_ny,
+        data_range: dateRangeStr,
+        source_feed: row.source_feed,
+        cone_table: currentMasterSnapshot.cone_table,
+        tail_table: currentMasterSnapshot.tail_table,
+        gex_table: currentMasterSnapshot.gex_table,
+        gex_summary: currentMasterSnapshot.gex_summary,
+        log_anom_table: currentMasterSnapshot.log_anom_table,
+        micro_table: currentMasterSnapshot.micro_table,
+        exec_matrix: currentMasterSnapshot.exec_matrix,
+        strategies_table: currentMasterSnapshot.strategies_table,
+        decisions: currentMasterSnapshot.decisions,
+        kpis: currentMasterSnapshot.kpis,
+      };
+      localStorage.setItem('nq_cached_snapshot', JSON.stringify(cleanSnap));
+    } catch (e) {}
+  }
+  
+  const k = currentMasterSnapshot.kpis || row.kpis || {};
+  const spotVal = Number.isFinite(parseFloat(row.spot)) ? parseFloat(row.spot) : lastKnownSpot;
+  const kpiSpotEl = document.getElementById('kpi-spot');
+  if (kpiSpotEl) kpiSpotEl.textContent = safeLoc(spotVal, 2);
+  
+  // Spread Bid-Ask L1
+  const spEl = document.getElementById('kpi-spread');
+  if (spEl) spEl.textContent = safeNum(k.spread_pts, 2, '', 'p');
+
+  // RVOL / Tape Speed
+  const tapeEl = document.getElementById('kpi-tape');
+  if (tapeEl) {
+    const rvolStr = safeNum(k.rvol_20d, 2, '', 'x');
+    const spdStr = safeNum(k.tick_speed, 1, '', ' t/s');
+    tapeEl.textContent = (rvolStr !== '--' || spdStr !== '--') ? `${rvolStr} | ${spdStr}` : '--';
+  }
+
+  // Gap PDC (16:00 ET)
+  const gapEl = document.getElementById('kpi-gap');
+  if (gapEl) {
+    const gapPts = safeFloat(k.gap_pts, null);
+    const gapPct = safeFloat(k.gap_pct, null);
+    if (gapPts !== null) {
+      const sign = gapPts > 0 ? '+' : '';
+      gapEl.textContent = `${sign}${gapPts.toFixed(1)}p (${sign}${safeNum(gapPct, 2)}%)`;
+      gapEl.style.color = gapPts >= 0 ? 'var(--long)' : 'var(--short)';
+    } else {
+      gapEl.textContent = '--';
+    }
+  }
+
+  // Opening Range (09:30-09:45 ET)
+  const orEl = document.getElementById('kpi-or');
+  if (orEl) {
+    const orH = safeFloat(k.or_high, null);
+    const orL = safeFloat(k.or_low, null);
+    if (orH !== null && orL !== null) {
+      orEl.textContent = `${orL.toLocaleString('en-US', {maximumFractionDigits:0})} - ${orH.toLocaleString('en-US', {maximumFractionDigits:0})}`;
+    } else {
+      orEl.textContent = '09:30 ET';
+    }
+  }
+
+  // Initial Balance (09:30-10:30 ET)
+  const ibEl = document.getElementById('kpi-ib');
+  if (ibEl) {
+    const ibH = safeFloat(k.ib_high, null);
+    const ibL = safeFloat(k.ib_low, null);
+    if (ibH !== null && ibL !== null) {
+      ibEl.textContent = `${ibL.toLocaleString('en-US', {maximumFractionDigits:0})} - ${ibH.toLocaleString('en-US', {maximumFractionDigits:0})}`;
+    } else {
+      ibEl.textContent = '10:30 ET';
+    }
+  }
+
+  // Sem├íforo Maestro de R├⌐gimen Unificado
+  const regEl = document.getElementById('regime-status-text');
+  const regBox = document.getElementById('regime-banner-box');
+  if (regEl && k.regime_arbiter) {
+    regEl.textContent = k.regime_arbiter;
+    if (k.regime_color) {
+      regEl.style.color = k.regime_color;
+      if (regBox) regBox.style.borderColor = k.regime_color;
+    }
+  }
+
+  // Doble VWAP
+  const globexV = k.vwap_globex || k.vwap_5m;
+  const globexZ = k.z_vwap_globex ?? k.z_vwap_5;
+  const vwapGEl = document.getElementById('kpi-vwap-globex');
+  if (vwapGEl) {
+    if (globexV) {
+      const gzVal = safeFloat(globexZ, null);
+      const zTxt = gzVal !== null ? ` (${gzVal > 0 ? '+' : ''}${gzVal.toFixed(2)}╧â)` : '';
+      vwapGEl.textContent = `${safeLoc(globexV, 1)}${zTxt}`;
+    } else {
+      vwapGEl.textContent = '--';
+    }
+  }
+
+  const rthV = k.vwap_rth;
+  const rthZ = k.z_vwap_rth;
+  const vwapREl = document.getElementById('kpi-vwap-rth');
+  if (vwapREl) {
+    if (rthV) {
+      const rzVal = safeFloat(rthZ, null);
+      const zTxt = rzVal !== null ? ` (${rzVal > 0 ? '+' : ''}${rzVal.toFixed(2)}╧â)` : '';
+      vwapREl.textContent = `${safeLoc(rthV, 1)}${zTxt}`;
+    } else {
+      vwapREl.textContent = '--';
+    }
+  }
+
+  // Volume Profile (POC, VAL, VAH)
+  const vpEl = document.getElementById('kpi-vp');
+  if (vpEl) {
+    const poc = k.poc ?? k.poc_price;
+    const val = k.val ?? k.val_price;
+    const vah = k.vah ?? k.vah_price;
+    if (poc) {
+      vpEl.textContent = `${safeLoc(poc, 0)} [${safeLoc(val, 0)} - ${safeLoc(vah, 0)}]`;
+    } else {
+      vpEl.textContent = '--';
+    }
+  }
+
+  const zgEl = document.getElementById('kpi-zg');
+  if (zgEl) zgEl.textContent = safeLoc(k.zero_gamma, 1);
+  const wallsEl = document.getElementById('kpi-walls');
+  if (wallsEl) wallsEl.textContent = `${safeLoc(k.put_wall, 0)} / ${safeLoc(k.call_wall, 0)}`;
+  const hwkEl = document.getElementById('kpi-hawkes');
+  if (hwkEl && (k.hawkes_call_label || k.hawkes_put_label)) {
+    hwkEl.textContent = `${k.hawkes_call_label || '--'}`;
+  }
+  const fredEl = document.getElementById('kpi-fred');
+  if (fredEl && k.fred_rate_3m) {
+    const rPct = (k.fred_rate_3m * 100).toFixed(2);
+    const carryPts = typeof k.cost_of_carry_pts === 'number' ? ` (${k.cost_of_carry_pts > 0 ? '+' : ''}${k.cost_of_carry_pts.toFixed(0)}p)` : '';
+    fredEl.textContent = `${rPct}%${carryPts}`;
+  }
+  const riskAlertEl = document.getElementById('hud-risk-alert');
+  if (riskAlertEl && k.risk_audit_is_valid !== undefined) {
+    riskAlertEl.style.display = k.risk_audit_is_valid ? 'none' : 'block';
+    if (!k.risk_audit_is_valid && k.risk_audit_status) {
+      riskAlertEl.textContent = k.risk_audit_status;
+    }
+  }
+  const lrEl = document.getElementById('kpi-lr');
+  if (lrEl) {
+    const lr = safeFloat(k.log_ret_5m, null);
+    lrEl.textContent = lr !== null ? `${lr > 0 ? '+' : ''}${lr.toFixed(5)}` : '--';
+    if (lr !== null) {
+      triggerSensoryAnomalyAlert(lr, k.upper_threshold_5m || k.upper_threshold, k.lower_threshold_5m || k.lower_threshold);
+    }
+  }
+
+  // Decisiones estructuradas con 3 tarjetas
+  const dec = currentMasterSnapshot.decisions || row.decisions;
+  if (dec) {
+    if (dec.page1) renderDecision('dec-banner-1', dec.page1);
+    if (dec.page2) renderDecision('dec-banner-2', dec.page2);
+    if (dec.page3) renderDecision('dec-banner-3', dec.page3);
+    if (dec.master) {
+      renderDecision('dec-banner-master', dec.master);
+      renderSideDecision('dec-banner-master-side', dec.master);
+    }
+  }
+
+  // Telemetr├¡a matem├ítica cruda en acorde├│n & Auditor├¡a ADF
+  try {
+    const badgeEl = document.getElementById('telemetry-adf-badge');
+    const detailEl = document.getElementById('telemetry-adf-detail');
+    if (badgeEl && k) {
+      const isStat = k.adf_is_stationary !== false;
+      const pval = typeof k.adf_pvalue === 'number' ? k.adf_pvalue.toFixed(3) : '0.001';
+      const adfStr = k.adf_status_str || (isStat ? `Prueba ADF: Estacionaria (p=${pval})` : `Prueba ADF: NO Estacionaria (p=${pval})`);
+      badgeEl.textContent = adfStr;
+      if (isStat) {
+        badgeEl.style.color = '#10b981';
+        badgeEl.style.backgroundColor = 'rgba(16, 185, 129, 0.18)';
+        badgeEl.style.borderColor = '#10b981';
+      } else {
+        badgeEl.style.color = '#ef4444';
+        badgeEl.style.backgroundColor = 'rgba(239, 68, 68, 0.25)';
+        badgeEl.style.borderColor = '#ef4444';
+      }
+      if (detailEl) {
+        const statStr = typeof k.adf_stat === 'number' ? k.adf_stat.toFixed(3) : '-';
+        const critStr = typeof k.adf_crit_5pct === 'number' ? k.adf_crit_5pct.toFixed(3) : '-2.86';
+        detailEl.textContent = `Estad├¡stico: ${statStr} | Cr├¡tico 5%: ${critStr} | ${isStat ? 'Γ£ô Luz Verde Operativa' : 'ΓÜá OPERATIVA SUSPENDIDA (BLOQUEO ECONOM├ëTRICO)'}`;
+      }
+    }
+    const garchParamEl = document.getElementById('telemetry-garch-params');
+    if (garchParamEl) {
+      garchParamEl.textContent = k.garch_params_str ? `Par├ímetros MLE GJR-GARCH(1,1): ${k.garch_params_str}` : '';
+    }
+
+    // Telemetr├¡a de Auditor├¡a de Riesgo (Kupiec & Christoffersen)
+    const kupiecEl = document.getElementById('telemetry-kupiec-badge');
+    const christEl = document.getElementById('telemetry-christoffersen-badge');
+    const riskDetEl = document.getElementById('telemetry-risk-detail');
+    if (kupiecEl && k) {
+      const isRiskValid = k.risk_audit_is_valid !== false;
+      const kp = typeof k.kupiec_pvalue === 'number' ? k.kupiec_pvalue.toFixed(4) : '0.5000';
+      const cp = typeof k.christoffersen_pvalue === 'number' ? k.christoffersen_pvalue.toFixed(4) : '0.5000';
+      kupiecEl.textContent = isRiskValid ? `Kupiec POF: Validado (p=${kp})` : `ΓÜá∩╕Å Kupiec POF: INVALIDADO (p=${kp})`;
+      kupiecEl.style.color = isRiskValid ? '#10b981' : '#ef4444';
+      kupiecEl.style.borderColor = isRiskValid ? '#10b981' : '#ef4444';
+      kupiecEl.style.backgroundColor = isRiskValid ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.25)';
+
+      if (christEl) {
+        christEl.textContent = isRiskValid ? `Christoffersen: Independiente (p=${cp})` : `ΓÜá∩╕Å Christoffersen: Cluster (p=${cp})`;
+        christEl.style.color = isRiskValid ? '#10b981' : '#ef4444';
+        christEl.style.borderColor = isRiskValid ? '#10b981' : '#ef4444';
+      }
+      if (riskDetEl) {
+        const fails = k.risk_audit_failures ?? '-';
+        const exp = typeof k.risk_audit_expected === 'number' ? k.risk_audit_expected.toFixed(1) : '2.5';
+        riskDetEl.textContent = `Fallos VaR 99%: ${fails} / 250 (Esp: ${exp}) | ${isRiskValid ? 'Γ£ô Cobertura Condicional OK' : 'ΓÜá BLOQUEO PREVENTIVO MLE'}`;
+      }
+    }
+  } catch (e) { console.error('telemetry-garch err:', e); }
+
+  // RENDERIZADO AISLADO Y BLINDADO DE CADA TABLA CUANTITATIVA
+  try {
+    const tCone = currentMasterSnapshot.cone_table;
+    if (Array.isArray(tCone) && tCone.length > 0) {
+      renderTable('tbl-cone', ["Horizonte Temporal", "P05 (Soporte Fuerte)", "P25 (Zona de Demanda)", "P50 (Mediana/Baseline)", "P75 (Zona de Oferta)", "P95 (Resistencia Fuerte)"], tCone);
+    }
+  } catch (e) { console.error('tbl-cone err:', e); }
+
+  try {
+    const tTail = currentMasterSnapshot.tail_table;
+    if (Array.isArray(tTail) && tTail.length > 0) {
+      renderTable('tbl-tail', ["Marco Temporal", "Soporte Probable (P05)", "Resistencia Probable (P95)", "Riesgo M├íximo / Hard Stop (VaR)", "Riesgo de Cisne Negro (CVaR)", "Directiva Operativa"], tTail);
+    }
+  } catch (e) { console.error('tbl-tail err:', e); }
+
+  try {
+    const tGex = currentMasterSnapshot.gex_table;
+    if (Array.isArray(tGex) && tGex.length > 0) {
+      renderTable('tbl-gex', ["Strike Clave", "Distancia", "Muro GEX + CRR", "Net GEX", "Prima CRR", "S* CRR", "Prob ITM", "Confluencia", "Acci├│n Exacta"], tGex);
+    }
+  } catch (e) { console.error('tbl-gex err:', e); }
+
+  try {
+    const tGexSum = currentMasterSnapshot.gex_summary;
+    if (Array.isArray(tGexSum) && tGexSum.length > 0) {
+      renderTable('tbl-gex-sum', ["Muro Primario", "Nivel NQ", "Exposici├│n Gamma", "M├⌐trica CRR", "Confluencia", "Acci├│n"], tGexSum);
+    }
+  } catch (e) { console.error('tbl-gex-sum err:', e); }
+
+  try {
+    const tLogAnom = currentMasterSnapshot.log_anom_table;
+    if (Array.isArray(tLogAnom) && tLogAnom.length > 0) {
+      renderTable('tbl-log-anom', ["Hora (NY)", "Precio NQ", "Log Return 5m", "Umbral Roto", "Se├▒al Momentum (Permutaci├│n p-value)"], tLogAnom);
+    }
+  } catch (e) { console.error('tbl-log-anom err:', e); }
+
+  try {
+    const tMicro = currentMasterSnapshot.micro_table;
+    if (Array.isArray(tMicro) && tMicro.length > 0) {
+      renderTable('tbl-micro', ["Borde Extremo", "Par├ímetro 1", "Par├ímetro 2", "Flujo", "Confiabilidad", "Acci├│n"], tMicro);
+    }
+  } catch (e) { console.error('tbl-micro err:', e); }
+
+  try {
+    const tExec = currentMasterSnapshot.exec_matrix;
+    if (Array.isArray(tExec) && tExec.length > 0) {
+      parseExecMatrix(tExec);
+      rebuildLiveLadder(lastKnownSpot, 0);
+    }
+  } catch (e) { console.error('tbl-exec err:', e); }
+
+  try {
+    const stratData = currentMasterSnapshot.strategies_table
+      || (row.decisions && row.decisions.strategies_table)
+      || (row.chart_series && row.chart_series.strategies_table)
+      || (row.kpis && row.kpis.strategies_table)
+      || [];
+    if (Array.isArray(stratData) && stratData.length > 0) {
+      renderTable('tbl-strat', [
+        "Estrategia Institucional (Nivel 1 MT5)",
+        "Activos / S├¡mbolos MT5",
+        "M├⌐tricas Cuantitativas (╬▒, ╬▓, Z, ╧â)",
+        "Par├ímetro / Offset ├ôptimo",
+        "Se├▒al / Ejecuci├│n Institucional"
+      ], stratData);
+    }
+  } catch (e) { console.error('tbl-strat err:', e); }
+
+  // Gr├íficos institucionales en alta resoluci├│n (Secciones 1, 2 y 3)
+  renderChartImages(row);
+
+  updateWatchdogStatus();
+}
+
+// Carga del ├Ültimo Snapshot Conocido (Inmediato al abrir Vercel o Cold-Start)
+async function loadLatestSnapshot() {
+  // 1. Hidrataci├│n instant├ínea 0ms desde LocalStorage si existe
+  try {
+    const cached = localStorage.getItem('nq_cached_snapshot');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed.exec_matrix) && parsed.exec_matrix.length > 0) {
+        applySnapshot(parsed);
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fetch directo ultrarr├ípido v├¡a REST API de Supabase (SELECT * ORDER BY updated_at DESC LIMIT 1)
+  const effectiveUrl = SB_URL || (window.ENV_SUPABASE_URL || '').trim();
+  const effectiveKey = SB_KEY || (window.ENV_SUPABASE_ANON_KEY || '').trim();
+
+  let loadedSuccessfully = false;
+
+  if (effectiveUrl && effectiveKey) {
+    const endpoints = [
+      `${effectiveUrl}/rest/v1/nq_snapshots?exec_matrix=not.is.null&order=updated_at.desc&limit=1`,
+      `${effectiveUrl}/rest/v1/nq_snapshots?order=updated_at.desc&limit=1`,
+      `${effectiveUrl}/rest/v1/nq_snapshots?id=eq.latest`
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 6000);
+        const resp = await fetch(ep, {
+          headers: {
+            'apikey': effectiveKey,
+            'Authorization': `Bearer ${effectiveKey}`
+          },
+          signal: ctrl.signal
+        });
+        clearTimeout(timeoutId);
+        if (resp.ok) {
+          const rows = await resp.json();
+          const targetRow = Array.isArray(rows) ? rows[0] : rows;
+          if (targetRow && typeof targetRow === 'object' && Object.keys(targetRow).length > 0) {
+            applySnapshot(targetRow);
+            loadedSuccessfully = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('REST fetch attempt failed for endpoint:', ep, err);
+      }
+    }
+  }
+
+  // 3. Consulta complementaria v├¡a Supabase SDK si est├í disponible
+  if (!loadedSuccessfully && supabaseClient) {
+    try {
+      const res = await supabaseClient
+        .from('nq_snapshots')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (res && res.data) {
+        applySnapshot(res.data);
+      } else {
+        const resLatest = await supabaseClient
+          .from('nq_snapshots')
+          .select('*')
+          .eq('id', 'latest')
+          .maybeSingle();
+        if (resLatest && resLatest.data) {
+          applySnapshot(resLatest.data);
+        }
+      }
+    } catch (e) {
+      console.error('Error cargando snapshot inicial v├¡a SDK:', e);
+    }
+  }
+}
+
+// Suscripci├│n Realtime (WebSockets)
+function subscribeRealtime() {
+  if (!supabaseClient) return;
+  supabaseClient
+    .channel('nq_realtime_channel')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'nq_snapshots' }, payload => {
+      if (payload.new) {
+        const rec = payload.new;
+        // Determinamos rigurosamente si es un pulso ultraligero de tick o un macro completo
+        const isTick = rec.is_tick === true || 
+                       (rec.kpis && rec.kpis.is_tick === true) || 
+                       (!rec.exec_matrix || !Array.isArray(rec.exec_matrix) || rec.exec_matrix.length === 0) ||
+                       (!rec.tail_table || !Array.isArray(rec.tail_table) || rec.tail_table.length === 0);
+        if (isTick) {
+          applyTickUpdate(rec);
+        } else {
+          applySnapshot(rec);
+        }
+      }
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        updateWatchdogStatus();
+      }
+    });
+}
+
+async function initApp() {
+  // Asegurar que el dashboard est├⌐ visible de inmediato sin cold-start freeze
+  const authScreen = document.getElementById('auth-screen');
+  const dashWrapper = document.getElementById('dashboard-wrapper');
+  if (authScreen) authScreen.style.display = 'none';
+  if (dashWrapper) dashWrapper.style.display = 'flex';
+
+  // Iniciar la carga de datos inmediatamente en paralelo
+  loadLatestSnapshot();
+
+  if (!SB_URL || !SB_KEY) {
+    const pill = document.getElementById('status-pill');
+    if (pill) pill.textContent = 'CONFIGURAR SUPABASE';
+    openConfigModal();
+    return;
+  }
+
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+    }
+  } catch (err) {
+    console.warn('Error inicializando Supabase SDK:', err);
+  }
+
+  if (supabaseClient) {
+    // Activar WebSockets en tiempo real
+    subscribeRealtime();
+    // Reintentar hidrataci├│n v├¡a SDK
+    loadLatestSnapshot();
+
+    // Verificaci├│n de sesi├│n no bloqueante
+    try {
+      supabaseClient.auth.getSession().then(({ data }) => {
+        if (data && data.session) {
+          checkSessionAndRender(data.session);
+        }
+      }).catch(() => {});
+
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        if (session) checkSessionAndRender(session);
+      });
+    } catch (e) {}
+  }
+
+  // Ejecutar el Watchdog cada segundo
+  setInterval(updateWatchdogStatus, 1000);
+}
+
+// Arranque robusto e inmediato del Dashboard (tolerante a readyState interactive o complete)
+function bootApp() {
+  const dashWrapper = document.getElementById('dashboard-wrapper');
+  if (dashWrapper) dashWrapper.style.display = 'flex';
+  initDomScrollListeners();
+
+  // Configurar input listener del Command Palette
+  const pInput = document.getElementById('cmd-palette-input');
+  if (pInput && !pInput.dataset.bound) {
+    pInput.dataset.bound = 'true';
+    pInput.addEventListener('input', (e) => {
+      filterCommands(e.target.value);
+    });
+  }
+  updateAlertsButtonUI();
+
+  try {
+    const cached = localStorage.getItem('nq_cached_snapshot');
+    if (cached) {
+      const snap = JSON.parse(cached);
+      applySnapshot(snap);
+    }
+  } catch (e) {}
+
+  updateClocks();
+  setInterval(updateClocks, 1000);
+  initApp();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
+
+</script>
+</body>
+</html>

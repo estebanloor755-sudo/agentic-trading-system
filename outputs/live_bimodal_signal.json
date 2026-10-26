@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-10-22T00:12:59.771845",
+  "mode": "INTRADAY",
+  "action": "HOLD",
+  "conviction_score": -0.016,
+  "confidence_pct": 2.5,
+  "bimodal_veto": false,
+  "top_news_driver": "Tensiones geopolíticas y temores de escalada bélica presionan materias primas",
+  "news_sentiment_score": -0.028,
+  "indicators": [
+    {
+      "name": "OFI / Desbalance de Flujo",
+      "weight": 0.2,
+      "raw_value": 0.6,
+      "directional_score": -0.302,
+      "reliability_tier": "Alta",
+      "rationale": "Volumen Z-Score de 0.60 con delta de precio -19.8 pts"
+    },
+    {
+      "name": "Exponente de Hurst & Memoria",
+      "weight": 0.25,
+      "raw_value": 0.477,
+      "directional_score": -0.156,
+      "reliability_tier": "Alta",
+      "rationale": "Reversión a la Media (H=0.477) buscando retorno a la media"
+    },
+    {
+      "name": "Muros GEX & Dealers Gamma",
+      "weight": 0.15,
+      "raw_value": 120.0,
+      "directional_score": 0.2,
+      "reliability_tier": "Media-Alta",
+      "rationale": "Precio en zona media entre Call Wall y Put Wall"
+    },
+    {
+      "name": "GJR-GARCH(1,1) Volatilidad",
+      "weight": 0.15,
+      "raw_value": 26.24,
+      "directional_score": 0.4,
+      "reliability_tier": "Media-Alta",
+      "rationale": "Volatilidad operativa normal (26.2%)"
+    },
+    {
+      "name": "FinBERT Cross-Attention Sentimiento",
+      "weight": 0.25,
+      "raw_value": -0.028,
+      "directional_score": -0.028,
+      "reliability_tier": "Estratégica",
+      "rationale": "Atención en 'Tensiones geopolíticas y temores de escalada bélica presionan materias primas' (100.0% peso latente)"
+    }
+  ]
+}

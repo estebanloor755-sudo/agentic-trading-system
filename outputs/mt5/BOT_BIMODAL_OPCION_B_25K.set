@@ -1,0 +1,32 @@
+;+------------------------------------------------------------------+
+;| Presets Oficiales: BOT_BIMODAL_INSTITUCIONAL_25K                 |
+;| MODALIDAD: 2 TRADES / DIA EN LA FUERTE TENDENCIA POST-MANIPULACION|
+;| PROFIT-LOCK (+12 PTS) + RUNNER (+105 PTS)                        |
+;| Cuenta: MyFundedFutures $25k Builder Plan (Piso DD: $1,000 USD)  |
+;+------------------------------------------------------------------+
+InpLotsPerContract=0.50
+InpNumContracts=2
+InpStopLossPts=35.0
+InpTarget1Pts=35.0
+InpLockProfitPts=12.0
+InpTarget2Pts=105.0
+InpMagicNumber=250012
+InpMaxDailyTrades=2
+InpServerOrbHour=16
+InpServerOrbMin=30
+InpServerEndEntryH=19
+InpServerCloseH=22
+InpServerCloseM=45
+InpMinOrbRangePts=15.0
+InpMaxOrbRangePts=140.0
+InpUseBimodalFilter=true
+InpSignalFileName=live_bimodal_signal.json
+InpMinConviction=0.20
+InpStrictVeto=true
+InpExploitDivergence=true
+InpDivStopLossPts=30.0
+InpDivTarget1Pts=30.0
+InpDivTarget2Pts=65.0
+InpUseEmaFilter=true
+InpEmaPeriod=200
+InpTimeframe=15

@@ -1,0 +1,239 @@
+//@version=5
+strategy("Swing & Day Trader 25k Nasdaq (Institutional Trend)", 
+         overlay=true, 
+         initial_capital=25000, 
+         default_qty_type=strategy.fixed, 
+         default_qty_value=2, 
+         commission_type=strategy.commission.cash_per_contract, 
+         commission_value=0.82, 
+         slippage=1, 
+         currency=currency.USD)
+
+// ==============================================================================
+// 1. REGLAS DE CUENTA DE FONDEO (MYFUNDEDFUTURES 25K BUILDER PLAN)
+// ==============================================================================
+grp_prop   = "1. Reglas MyFundedFutures $25k Builder Plan"
+accCapital = input.float(25000.0, "Capital Inicial ($)", group=grp_prop)
+maxDailyL  = input.float(600.0,   "Límite de Pérdida Diaria ($)", group=grp_prop, tooltip="Límite estricto MyFundedFutures: $600")
+targetFund = input.float(1500.0,  "Objetivo de Fondeo ($)", group=grp_prop, tooltip="Pasa la evaluación al ganar $1,500 ($26,500)")
+maxDrawdown= input.float(1000.0,  "Trailing EOD Drawdown ($)", group=grp_prop, tooltip="Suelo de cuenta inicial en $24,000")
+maxDailyTr = input.int(2,         "Máximo de Trades por Día", minval=1, maxval=5, group=grp_prop, tooltip="Evita sobreoperar y caer en HFT")
+
+// ==============================================================================
+// 2. MODO OPERATIVO Y GEOMETRÍA DEL TRADE (SWING vs DAY TRADER)
+// ==============================================================================
+grp_geo    = "2. Geometría Institucional (Riesgo / Beneficio)"
+tradeMode  = input.string("Multi-Target (2 Micros)", "Modo de Posición", options=["Multi-Target (2 Micros)", "Single Target (1 Micro)"], group=grp_geo)
+closeEOD   = input.bool(true,     "Cierre Intradiario Forzoso (Modo Day Trader)", group=grp_geo, tooltip="Cierra todas las posiciones a las 15:50 NY para evitar riesgo nocturno")
+
+stopPts    = input.float(35.0,    "Stop Loss (Puntos Nasdaq)", step=5.0, group=grp_geo, tooltip="35 pts = $70 USD por 1 MNQ ($140 por 2 MNQ). Muy lejos del límite diario de $600.")
+t1Pts      = input.float(60.0,    "Target 1: Asegura Beneficio (Puntos)", step=5.0, group=grp_geo, tooltip="+60 pts = +$120 USD. Al tocarlo, activa Break-Even en el contrato 2.")
+t2Pts      = input.float(110.0,   "Target 2: Runner Tendencial (Puntos)", step=10.0, group=grp_geo, tooltip="+110 pts = +$220 USD. Búsqueda de expansiones limpias.")
+singleTpPts= input.float(90.0,    "Target Modo 1 Micro (Puntos)", step=10.0, group=grp_geo, tooltip="Usado si el modo es 'Single Target (1 Micro)'. R:R = 1:2.57")
+
+// ==============================================================================
+// 3. FILTROS TENDENCIALES INSTITUCIONALES (NO SCALPING / NO HFT)
+// ==============================================================================
+grp_tech   = "3. Filtro Macro de Tendencia y Pullback"
+fastEmaLen = input.int(21,        "EMA Rápida (Zona de Valor)", group=grp_tech)
+midEmaLen  = input.int(50,        "EMA Media (Estructura)", group=grp_tech)
+slowEmaLen = input.int(200,       "EMA Lenta (Filtro Macro 200)", group=grp_tech)
+rsiLen     = input.int(14,        "Período RSI", group=grp_tech)
+useVol     = input.bool(true,     "Exigir Volumen Superior a la Media", group=grp_tech)
+
+// ==============================================================================
+// 4. FILTRO DE HORARIO (SESIÓN REGULAR DE NUEVA YORK - NY CASH)
+// ==============================================================================
+grp_time   = "4. Horario de Operación (Wall Street / NY Time)"
+sessionInp = input.session("0930-1500:23456", "Ventana de Entrada (NY Time)", group=grp_time, tooltip="Solo busca entradas de alta liquidez entre 09:30 y 15:00 EST")
+eodTime    = input.session("1550-1600:23456", "Ventana de Cierre EOD", group=grp_time)
+
+// Indicadores Técnicos
+ema21  = ta.ema(close, fastEmaLen)
+ema50  = ta.ema(close, midEmaLen)
+ema200 = ta.ema(close, slowEmaLen)
+rsiVal = ta.rsi(close, rsiLen)
+volMa  = ta.sma(volume, 20)
+
+// Condiciones de Sesión y Horario
+inTradeSession = not na(time(timeframe.period, sessionInp, "America/New_York"))
+isEodBar       = not na(time(timeframe.period, eodTime, "America/New_York"))
+
+// Control de trades diarios (Previene sobreoperar)
+var int tradesToday = 0
+var int lastDay = na
+currentDay = dayofmonth(time("America/New_York"))
+
+if currentDay != lastDay
+    lastDay := currentDay
+    tradesToday := 0
+
+// Filtro de Tendencia Macro
+trendBull = (close > ema200) and (ema50 > ema200)
+trendBear = (close < ema200) and (ema50 < ema200)
+
+// Filtro de Volumen
+volOk = not useVol or (volume >= volMa * 0.85)
+
+// Señal Institucional: Pullback a la Zona de Valor (EMA 21/50) + Confirmación de Giro
+// Compras: En tendencia alcista, el precio testea la EMA 21/50, RSI > 45 y la vela rompe el máximo anterior
+longCondition = trendBull and inTradeSession and (tradesToday < maxDailyTr) and volOk and 
+                (low[1] <= ema21[1] or low <= ema21) and (close > high[1]) and (rsiVal >= 48) and (close > open)
+
+// Ventas: En tendencia bajista, el precio testea la EMA 21/50, RSI < 55 y la vela rompe el mínimo anterior
+shortCondition = trendBear and inTradeSession and (tradesToday < maxDailyTr) and volOk and 
+                 (high[1] >= ema21[1] or high >= ema21) and (close < low[1]) and (rsiVal <= 52) and (close < open)
+
+// ==============================================================================
+// 5. GESTIÓN DE ENTRADAS Y SALIDAS (MULTI-TARGET & BREAK-EVEN)
+// ==============================================================================
+var float entryPrice = na
+var int   entryBar   = na
+var bool  t1Reached  = false
+var bool  isLongPos  = false
+var bool  isShortPos = false
+
+inPosition = strategy.position_size != 0
+
+if not inPosition
+    entryPrice := na
+    entryBar   := na
+    t1Reached  := false
+    isLongPos  := false
+    isShortPos := false
+
+// Disparo de Posiciones
+if not inPosition and (tradesToday < maxDailyTr)
+    if longCondition
+        entryPrice := close
+        entryBar   := bar_index
+        t1Reached  := false
+        isLongPos  := true
+        isShortPos := false
+        tradesToday += 1
+        
+        if tradeMode == "Multi-Target (2 Micros)"
+            strategy.entry("Long_C1", strategy.long, qty=1, comment="Buy_C1_Target1")
+            strategy.entry("Long_C2", strategy.long, qty=1, comment="Buy_C2_Runner")
+        else
+            strategy.entry("Long_Single", strategy.long, qty=1, comment="Buy_Swing_1MNQ")
+
+    else if shortCondition
+        entryPrice := close
+        entryBar   := bar_index
+        t1Reached  := false
+        isLongPos  := false
+        isShortPos := true
+        tradesToday += 1
+        
+        if tradeMode == "Multi-Target (2 Micros)"
+            strategy.entry("Short_C1", strategy.short, qty=1, comment="Sell_C1_Target1")
+            strategy.entry("Short_C2", strategy.short, qty=1, comment="Sell_C2_Runner")
+        else
+            strategy.entry("Short_Single", strategy.short, qty=1, comment="Sell_Swing_1MNQ")
+
+// Gestión de Salidas
+if inPosition
+    // Cierre forzoso EOD si está activado
+    if closeEOD and isEodBar
+        strategy.close_all(comment="EOD_Force_Close")
+        
+    // --- GESTIÓN COMPRAS (LONG) ---
+    else if isLongPos
+        if tradeMode == "Multi-Target (2 Micros)"
+            if high >= entryPrice + t1Pts
+                t1Reached := true
+
+            // Contrato 1: TP en T1 (+60 pts), SL en -35 pts
+            strategy.exit("Exit_L_C1", "Long_C1", 
+                          limit=entryPrice + t1Pts, 
+                          stop=entryPrice - stopPts, 
+                          comment_profit="TP1_Long(+60p)", 
+                          comment_loss="SL_Long(-35p)")
+
+            // Contrato 2: Si T1 cobró, Stop se mueve a Entrada + 0.50 pts (Break-Even garantizado)
+            c2Stop = t1Reached ? (entryPrice + 0.50) : (entryPrice - stopPts)
+            strategy.exit("Exit_L_C2", "Long_C2", 
+                          limit=entryPrice + t2Pts, 
+                          stop=c2Stop, 
+                          comment_profit="TP2_Long(+110p)", 
+                          comment_loss=t1Reached ? "BE_Long" : "SL_Long")
+        else
+            // Modo Single Target (1 Micro)
+            strategy.exit("Exit_L_Single", "Long_Single", 
+                          limit=entryPrice + singleTpPts, 
+                          stop=entryPrice - stopPts, 
+                          comment_profit="TP_Swing(+90p)", 
+                          comment_loss="SL_Swing(-35p)")
+
+    // --- GESTIÓN VENTAS (SHORT) ---
+    else if isShortPos
+        if tradeMode == "Multi-Target (2 Micros)"
+            if low <= entryPrice - t1Pts
+                t1Reached := true
+
+            // Contrato 1: TP en T1 (-60 pts), SL en +35 pts
+            strategy.exit("Exit_S_C1", "Short_C1", 
+                          limit=entryPrice - t1Pts, 
+                          stop=entryPrice + stopPts, 
+                          comment_profit="TP1_Short(+60p)", 
+                          comment_loss="SL_Short(-35p)")
+
+            // Contrato 2: Si T1 cobró, Stop a Break-Even
+            c2Stop = t1Reached ? (entryPrice - 0.50) : (entryPrice + stopPts)
+            strategy.exit("Exit_S_C2", "Short_C2", 
+                          limit=entryPrice - t2Pts, 
+                          stop=c2Stop, 
+                          comment_profit="TP2_Short(+110p)", 
+                          comment_loss=t1Reached ? "BE_Short" : "SL_Short")
+        else
+            // Modo Single Target (1 Micro)
+            strategy.exit("Exit_S_Single", "Short_Single", 
+                          limit=entryPrice - singleTpPts, 
+                          stop=entryPrice + stopPts, 
+                          comment_profit="TP_Swing(+90p)", 
+                          comment_loss="SL_Swing(-35p)")
+
+// ==============================================================================
+// 6. VISUALIZACIÓN EN GRÁFICO (LÍNEAS Y ZONAS)
+// ==============================================================================
+plot(ema21, "EMA 21 (Pullback)", color=color.new(color.orange, 20), linewidth=1)
+plot(ema50, "EMA 50 (Estructura)", color=color.new(color.blue, 20), linewidth=2)
+plot(ema200, "EMA 200 (Macro Trend)", color=color.new(color.purple, 0), linewidth=3)
+
+// Líneas de niveles de posición activa
+plot(inPosition ? entryPrice : na, "Entrada", color=color.white, style=plot.style_linebr, linewidth=2)
+plot(inPosition and isLongPos ? entryPrice + t1Pts : inPosition and isShortPos ? entryPrice - t1Pts : na, "Target 1 (+60p)", color=color.green, style=plot.style_linebr, linewidth=1)
+plot(inPosition and isLongPos ? entryPrice + t2Pts : inPosition and isShortPos ? entryPrice - t2Pts : na, "Target 2 (+110p)", color=color.teal, style=plot.style_linebr, linewidth=2)
+plot(inPosition and isLongPos ? (t1Reached ? entryPrice : entryPrice - stopPts) : inPosition and isShortPos ? (t1Reached ? entryPrice : entryPrice + stopPts) : na, "Stop Loss", color=color.red, style=plot.style_linebr, linewidth=2)
+
+// ==============================================================================
+// 7. DASHBOARD DE ESTADO DE CUENTA DE FONDEO ($25K BUILDER)
+// ==============================================================================
+var table hud = table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
+if barstate.islast
+    netProfit = strategy.netprofit
+    openPnl   = strategy.openprofit
+    totPnl    = netProfit + openPnl
+    equity    = accCapital + totPnl
+    
+    statusCol = totPnl >= targetFund ? color.green : (totPnl <= -maxDrawdown ? color.red : color.yellow)
+    statusTxt = totPnl >= targetFund ? "OBJETIVO CUMPLIDO ✓" : (totPnl <= -maxDrawdown ? "VIOLACIÓN TRAILING ⚠️" : "EN CURSO (ACTIVA)")
+
+    table.cell(hud, 0, 0, "Prop Account", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 0, "MyFundedFutures $25k", text_color=color.aqua, text_size=size.small)
+
+    table.cell(hud, 0, 1, "Estado", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 1, statusTxt, text_color=statusCol, text_size=size.small)
+
+    table.cell(hud, 0, 2, "Net PnL", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 2, str.tostring(totPnl, "$#,###.00"), text_color=totPnl >= 0 ? color.green : color.red, text_size=size.small)
+
+    table.cell(hud, 0, 3, "Suelo Trailing", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 3, "$24,000.00", text_color=color.orange, text_size=size.small)
+
+    table.cell(hud, 0, 4, "Meta ($1,500)", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 4, str.tostring((totPnl / targetFund) * 100, "#.0") + "%", text_color=color.white, text_size=size.small)
+
+    table.cell(hud, 0, 5, "Modo Activo", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 5, closeEOD ? "Day Trader (Nocturno OFF)" : "Swing Trader", text_color=color.white, text_size=size.small)

@@ -1,0 +1,1 @@
+﻿"""Terminal Cuantitativa NQ/MNQ."""

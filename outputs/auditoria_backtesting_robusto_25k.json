@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-10-22T00:19:01.591159",
+  "dataset_bars": 70000,
+  "start_date": "2023-10-31",
+  "end_date": "2026-10-22",
+  "full_period": {
+    "net_profit": -946.0,
+    "total_trades": 192,
+    "win_rate": 45.83333333333333,
+    "profit_factor": 0.8496503496502146,
+    "max_dd": 1564.5,
+    "calmar": -0.604666027484433
+  },
+  "recent_3m": {
+    "net_profit": -378.0,
+    "total_trades": 22,
+    "win_rate": 31.818181818181817,
+    "profit_factor": 0.5834710743795224,
+    "max_dd": 387.5
+  },
+  "monte_carlo": {
+    "simulations": 1000,
+    "p95_max_dd": 2782.6249999999995,
+    "p99_max_dd": 3294.0399999999995,
+    "ruin_probability_pct": 82.5,
+    "pass_target_probability_pct": 0.3
+  }
+}

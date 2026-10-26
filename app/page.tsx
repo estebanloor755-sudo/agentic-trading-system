@@ -63,7 +63,7 @@ const ViewDSetupValidator = dynamic(
 );
 
 type SidebarSection = "resumen" | "investigacion" | "estrategias" | "conocimiento" | "envivo";
-type CoreViewMode = "VIEW_A" | "VIEW_B" | "VIEW_C" | "VIEW_D";
+type CoreViewMode = "VIEW_A" | "VIEW_B" | "VIEW_C" | "VIEW_D" | "VIEW_E";
 
 interface ExternalAuditResult {
   source: string;
@@ -231,9 +231,9 @@ export default function TradeBreinMasterApp() {
       },
       {
         id: "envivo" as const,
-        title: "En Vivo",
-        subtitle: "Ejecución CME",
-        defaultView: "VIEW_C" as const,
+        title: "En Vivo (NQ MT5)",
+        subtitle: "Terminal Anterior",
+        defaultView: "VIEW_E" as const,
         icon: Radio,
         badge: String(funnel.live)
       }
@@ -422,14 +422,15 @@ export default function TradeBreinMasterApp() {
               <span>Auditoría IA</span>
             </button>
 
-            {/* Conmutador de las 4 Vistas Dinámicas */}
+            {/* Conmutador de las 5 Vistas Dinámicas (incluye Trabajo Anterior NQ MT5) */}
             <div className="flex items-center gap-1 rounded-md border border-[#1f222d] bg-[#030407] p-0.5 font-mono text-[10px]">
               {(
                 [
                   { id: "VIEW_A", label: "Vista A: Esfera 3D" },
                   { id: "VIEW_B", label: "Vista B: Pipeline" },
                   { id: "VIEW_C", label: "Vista C: Estrategias IS/OOS" },
-                  { id: "VIEW_D", label: "Vista D: Validador" }
+                  { id: "VIEW_D", label: "Vista D: Validador" },
+                  { id: "VIEW_E", label: "Vista E: Terminal NQ (Anterior)" }
                 ] as const
               ).map((v) => (
                 <button
@@ -506,7 +507,7 @@ export default function TradeBreinMasterApp() {
         </section>
 
         {/* ===================================================================
-            PASO 3: EL CORE DE LA APP (Renderizado de las 4 Vistas Dinámicas)
+            PASO 3: EL CORE DE LA APP (Renderizado de las 5 Vistas Dinámicas)
         ==================================================================== */}
         <main className="min-h-0 flex-1 overflow-hidden px-3 py-2.5">
           {activeView === "VIEW_C" && <ViewCStrategiesSplit />}
@@ -514,6 +515,34 @@ export default function TradeBreinMasterApp() {
           {activeView === "VIEW_B" && <ViewBHorizontalPipeline />}
           {activeView === "VIEW_D" && (
             <ViewDSetupValidator onValidateSetup={sendHumanValidation} />
+          )}
+          {activeView === "VIEW_E" && (
+            <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-[#1f222d] bg-[#0a0b10]">
+              <div className="flex items-center justify-between border-b border-[#1f222d] bg-[#030407] px-3.5 py-2 font-mono text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-[#4ade80]" />
+                  <span className="font-bold text-white">
+                    TERMINAL NQ MT5 / SUPABASE (TRABAJO ANTERIOR INTEGRADO)
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    • Módulos preservados: backtest_engine.py, data_feed_nq.py, main_dashboard_nq.py, core/, models/, simulations/
+                  </span>
+                </div>
+                <a
+                  href="/nq-dashboard/index.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded border border-[#22d3ee]/40 bg-[#22d3ee]/10 px-2.5 py-1 text-[10px] font-bold text-[#22d3ee] transition hover:bg-[#22d3ee]/20"
+                >
+                  Abrir Terminal NQ en Pantalla Completa ↗
+                </a>
+              </div>
+              <iframe
+                src="/nq-dashboard/index.html"
+                title="Terminal Cuantitativa NQ Anterior"
+                className="h-full w-full flex-1 border-0 bg-[#030407]"
+              />
+            </div>
           )}
         </main>
 

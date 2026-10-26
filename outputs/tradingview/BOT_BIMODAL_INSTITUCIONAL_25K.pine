@@ -1,0 +1,146 @@
+//@version=5
+strategy("BOT BIMODAL INSTITUCIONAL 25K (FinBERT + Cross-Attention + ORB 15M)", 
+         overlay=true, 
+         initial_capital=25000, 
+         default_qty_type=strategy.fixed, 
+         default_qty_value=2, 
+         commission_type=strategy.commission.cash_per_contract, 
+         commission_value=0.82, 
+         slippage=1, 
+         currency=currency.USD)
+
+// ==============================================================================
+// 1. REGLAS DE CUENTA DE FONDEO (MYFUNDEDFUTURES 25K BUILDER)
+// ==============================================================================
+grp_prop   = "1. Reglas de Fondeo ($25k Builder Plan)"
+stopPts    = input.float(28.0,    "Stop Loss (Puntos)", step=2.0, group=grp_prop, tooltip="28 pts = $56 USD en 2 MNQ")
+t1Pts      = input.float(30.0,    "Target 1: Cobro Seguro (+30 pts = +$60 USD)", step=2.0, group=grp_prop)
+t2Pts      = input.float(70.0,    "Target 2: Expansión (+70 pts = +$140 USD)", step=5.0, group=grp_prop)
+
+// ==============================================================================
+// 2. CAPA BIMODAL: FINBERT CROSS-ATTENTION & TERMINAL ENSEMBLE
+// ==============================================================================
+grp_bimodal = "2. Filtro Bimodal Cuantitativo (FinBERT + Terminal)"
+useBimodal  = input.bool(true,     "Activar Filtro Bimodal Pre-Ejecución", group=grp_bimodal)
+minConvict  = input.float(0.20,    "Umbral Mínimo de Convicción (+0.20 a 1.0)", step=0.05, group=grp_bimodal)
+macroBias   = input.string("ALCISTA / DOVISH", "Sesgo Macro Terminal", 
+                           options=["ALCISTA / DOVISH", "BAJISTA / HAWKISH", "NEUTRAL / COMPRESIÓN"], group=grp_bimodal)
+
+// ==============================================================================
+// 3. HORARIOS DE APERTURA INSTITUCIONAL (WALL STREET CASH)
+// ==============================================================================
+grp_time   = "3. Horarios Wall Street (NY Time)"
+orbSession = input.session("0930-0945:23456", "Vela Apertura ORB (15M)", group=grp_time)
+entrySess  = input.session("0945-1100:23456", "Ventana de Entrada", group=grp_time)
+eodSession = input.session("1545-1600:23456", "Cierre Forzoso EOD", group=grp_time)
+
+// Indicadores Técnicos
+ema200     = ta.ema(close, 200)
+
+// Estados de Sesión
+isOrbBar   = not na(time(timeframe.period, orbSession, "America/New_York"))
+inEntry    = not na(time(timeframe.period, entrySess, "America/New_York"))
+isEodBar   = not na(time(timeframe.period, eodSession, "America/New_York"))
+
+var float orbHigh = na
+var float orbLow  = na
+var bool  orbFormed = false
+var int   tradesToday = 0
+var int   lastDay = na
+
+currentDay = dayofmonth(time("America/New_York"))
+
+if currentDay != lastDay
+    lastDay := currentDay
+    orbHigh := na
+    orbLow  := na
+    orbFormed := false
+    tradesToday := 0
+
+if isOrbBar
+    orbHigh := high
+    orbLow  := low
+    orbFormed := true
+
+// Filtro Bimodal
+bimodalBuyOk  = not useBimodal or (macroBias != "BAJISTA / HAWKISH")
+bimodalSellOk = not useBimodal or (macroBias != "ALCISTA / DOVISH")
+
+// Condiciones de Ruptura con Validación Bimodal
+longCond     = orbFormed and inEntry and (tradesToday < 1) and (close > orbHigh) and (close > ema200) and bimodalBuyOk
+shortCond    = orbFormed and inEntry and (tradesToday < 1) and (close < orbLow) and (close < ema200) and bimodalSellOk
+
+// Opción B: Explotación Activa de Divergencias (Operar la Trampa)
+fadeTrapSell = orbFormed and inEntry and (tradesToday < 1) and (close > orbHigh) and (macroBias == "BAJISTA / HAWKISH" or close < ema200)
+fadeTrapBuy  = orbFormed and inEntry and (tradesToday < 1) and (close < orbLow) and (macroBias == "ALCISTA / DOVISH" or close > ema200)
+
+// Gestión de Posiciones con Break-Even Automático
+var float entryPrice = na
+var bool  t1Reached  = false
+var bool  isLong     = false
+var bool  isShort    = false
+
+inPos = strategy.position_size != 0
+
+if not inPos
+    entryPrice := na
+    t1Reached  := false
+    isLong     := false
+    isShort    := false
+
+if not inPos and (tradesToday < 1)
+    if longCond
+        entryPrice := close
+        t1Reached  := false
+        isLong     := true
+        isShort    := false
+        tradesToday += 1
+        strategy.entry("BIMODAL_Long_C1", strategy.long, qty=1, comment="Buy_C1_Target1")
+        strategy.entry("BIMODAL_Long_C2", strategy.long, qty=1, comment="Buy_C2_Runner")
+    else if shortCond
+        entryPrice := close
+        t1Reached  := false
+        isLong     := false
+        isShort    := true
+        tradesToday += 1
+        strategy.entry("BIMODAL_Short_C1", strategy.short, qty=1, comment="Sell_C1_Target1")
+        strategy.entry("BIMODAL_Short_C2", strategy.short, qty=1, comment="Sell_C2_Runner")
+    else if fadeTrapSell
+        entryPrice := close
+        t1Reached  := false
+        isLong     := false
+        isShort    := true
+        tradesToday += 1
+        strategy.entry("TRAP_Short_C1", strategy.short, qty=1, comment="Fade_BullTrap_C1")
+        strategy.entry("TRAP_Short_C2", strategy.short, qty=1, comment="Fade_BullTrap_C2")
+    else if fadeTrapBuy
+        entryPrice := close
+        t1Reached  := false
+        isLong     := true
+        isShort    := false
+        tradesToday += 1
+        strategy.entry("TRAP_Long_C1", strategy.long, qty=1, comment="Fade_BearTrap_C1")
+        strategy.entry("TRAP_Long_C2", strategy.long, qty=1, comment="Fade_BearTrap_C2")
+
+if inPos
+    curSl = isLong ? (t1Reached ? (entryPrice + 0.50) : (entryPrice - stopPts)) : (t1Reached ? (entryPrice - 0.50) : (entryPrice + stopPts))
+    
+    if isLong
+        if not t1Reached and high >= (entryPrice + t1Pts)
+            t1Reached := true
+        strategy.exit("Exit_C1", from_entry="BIMODAL_Long_C1", limit=entryPrice + t1Pts, stop=curSl)
+        strategy.exit("Exit_C2", from_entry="BIMODAL_Long_C2", limit=entryPrice + t2Pts, stop=curSl)
+    else if isShort
+        if not t1Reached and low <= (entryPrice - t1Pts)
+            t1Reached := true
+        strategy.exit("Exit_C1", from_entry="BIMODAL_Short_C1", limit=entryPrice - t1Pts, stop=curSl)
+        strategy.exit("Exit_C2", from_entry="BIMODAL_Short_C2", limit=entryPrice - t2Pts, stop=curSl)
+
+// Cierre EOD Obligatorio
+if isEodBar and inPos
+    strategy.close_all(comment="EOD_Flat")
+
+// Visualización de Niveles ORB
+plot(orbHigh, "ORB High 15M", color=color.new(color.green, 20), style=plot.style_linebr, linewidth=2)
+plot(orbLow,  "ORB Low 15M",  color=color.new(color.red, 20),   style=plot.style_linebr, linewidth=2)
+plot(ema200,  "EMA 200",      color=color.new(color.yellow, 30), linewidth=2)

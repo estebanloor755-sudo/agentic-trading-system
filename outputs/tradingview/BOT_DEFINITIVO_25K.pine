@@ -1,0 +1,183 @@
+//@version=5
+strategy("BOT DEFINITIVO 25K (Donchian + Asimetria)", 
+         overlay=true, 
+         initial_capital=25000, 
+         default_qty_type=strategy.fixed, 
+         default_qty_value=2, 
+         commission_type=strategy.commission.cash_per_contract, 
+         commission_value=0.82, 
+         slippage=1, 
+         currency=currency.USD)
+
+// ==============================================================================
+// 1. REGLAS DE CUENTA DE FONDEO (MYFUNDEDFUTURES 25K BUILDER PLAN)
+// ==============================================================================
+grp_prop   = "1. Reglas de Fondeo ($25k Builder Plan)"
+accCapital = input.float(25000.0, "Capital Inicial ($)", group=grp_prop)
+targetFund = input.float(1500.0,  "Objetivo de Fondeo ($)", group=grp_prop)
+maxDrawdown= input.float(1000.0,  "Trailing EOD Drawdown ($)", group=grp_prop)
+maxDailyTr = input.int(3,         "Máximo de Trades por Día", group=grp_prop)
+
+// ==============================================================================
+// 2. GEOMETRÍA ASIMÉTRICA CAMPEONA (STOP: 20p | T1: 25p | T2: 50p)
+// ==============================================================================
+grp_geo    = "2. Geometría Asimétrica Cuantitativa"
+stopPts    = input.float(20.0,    "Stop Loss (Puntos Nasdaq)", step=2.0, group=grp_geo, tooltip="20 pts = $40 USD por contrato ($80 total en 2 contratos)")
+t1Pts      = input.float(25.0,    "Target 1: Cobro Rápido (Puntos)", step=2.0, group=grp_geo, tooltip="+25 pts = +$50 USD. Al tocarlo, activa Break-Even en C2.")
+t2Pts      = input.float(50.0,    "Target 2: Runner Asimétrico (Puntos)", step=5.0, group=grp_geo, tooltip="+50 pts = +$100 USD. Captura expansiones limpias.")
+closeEOD   = input.bool(true,     "Cierre Intradiario Forzoso (EOD)", group=grp_geo)
+
+// ==============================================================================
+// 3. FILTROS CUANTITATIVOS: DONCHIAN Y MACRO TREND
+// ==============================================================================
+grp_tech   = "3. Filtro Cuantitativo de Ruptura y Tendencia"
+donchianLen= input.int(20,        "Período Canal Donchian (Barras M15)", group=grp_tech, tooltip="20 velas de 15m = 5 horas de rango previo")
+slowEmaLen = input.int(200,       "EMA Lenta (Macro Trend 200)", group=grp_tech)
+
+grp_quant  = "3.1 Modelos Estadísticos y Cuantitativos"
+useVolZ    = input.bool(false,    "Activar Z-Score de Volumen Institucional", group=grp_quant)
+minVolZ    = input.float(0.50,    "Z-Score Mínimo", step=0.1, group=grp_quant)
+volZLen    = input.int(20,        "Ventana Z-Score Volumen", group=grp_quant)
+
+// ==============================================================================
+// 4. HORARIO DE OPERACIÓN (WALL STREET CASH)
+// ==============================================================================
+grp_time   = "4. Horario Wall Street (NY Time)"
+sessionInp = input.session("0930-1500:23456", "Ventana de Entrada NY", group=grp_time)
+eodTime    = input.session("1550-1600:23456", "Cierre EOD", group=grp_time)
+
+// Indicadores
+ema200     = ta.ema(close, slowEmaLen)
+donchHigh  = ta.highest(high[1], donchianLen)
+donchLow   = ta.lowest(low[1], donchianLen)
+
+// Z-Score de Volumen Institucional
+vMean      = ta.sma(volume, volZLen)
+vStd       = ta.stdev(volume, volZLen)
+volZ       = (vStd > 0) ? ((volume - vMean) / vStd) : 0.0
+volZOk     = not useVolZ or (volZ >= minVolZ)
+
+inSession  = not na(time(timeframe.period, sessionInp, "America/New_York"))
+isEodBar   = not na(time(timeframe.period, eodTime, "America/New_York"))
+
+// Control diario
+var int tradesToday = 0
+var int lastDay = na
+currentDay = dayofmonth(time("America/New_York"))
+
+if currentDay != lastDay
+    lastDay := currentDay
+    tradesToday := 0
+
+// Condiciones de Ruptura Institucional
+longCondition  = inSession and (tradesToday < maxDailyTr) and (close > donchHigh) and (close > ema200) and volZOk
+shortCondition = inSession and (tradesToday < maxDailyTr) and (close < donchLow) and (close < ema200) and volZOk
+
+// ==============================================================================
+// 5. GESTIÓN DE ENTRADAS Y SALIDAS CON CANDADO BREAK-EVEN
+// ==============================================================================
+var float entryPrice = na
+var bool  t1Reached  = false
+var bool  isLongPos  = false
+var bool  isShortPos = false
+
+inPosition = strategy.position_size != 0
+
+if not inPosition
+    entryPrice := na
+    t1Reached  := false
+    isLongPos  := false
+    isShortPos := false
+
+if not inPosition and (tradesToday < maxDailyTr)
+    if longCondition
+        entryPrice := close
+        t1Reached  := false
+        isLongPos  := true
+        isShortPos := false
+        tradesToday += 1
+        strategy.entry("Long_C1", strategy.long, qty=1, comment="Buy_C1_Target1")
+        strategy.entry("Long_C2", strategy.long, qty=1, comment="Buy_C2_Runner")
+
+    else if shortCondition
+        entryPrice := close
+        t1Reached  := false
+        isLongPos  := false
+        isShortPos := true
+        tradesToday += 1
+        strategy.entry("Short_C1", strategy.short, qty=1, comment="Sell_C1_Target1")
+        strategy.entry("Short_C2", strategy.short, qty=1, comment="Sell_C2_Runner")
+
+if inPosition
+    if closeEOD and isEodBar
+        strategy.close_all(comment="EOD_Force_Close")
+        
+    else if isLongPos
+        if high >= entryPrice + t1Pts
+            t1Reached := true
+
+        strategy.exit("Exit_L_C1", "Long_C1", 
+                      limit=entryPrice + t1Pts, 
+                      stop=entryPrice - stopPts, 
+                      comment_profit="TP1_Long(+25p)", 
+                      comment_loss="SL_Long(-20p)")
+
+        c2Stop = t1Reached ? (entryPrice + 0.50) : (entryPrice - stopPts)
+        strategy.exit("Exit_L_C2", "Long_C2", 
+                      limit=entryPrice + t2Pts, 
+                      stop=c2Stop, 
+                      comment_profit="TP2_Long(+50p)", 
+                      comment_loss=t1Reached ? "BE_Long(+0.5p)" : "SL_Long(-20p)")
+
+    else if isShortPos
+        if low <= entryPrice - t1Pts
+            t1Reached := true
+
+        strategy.exit("Exit_S_C1", "Short_C1", 
+                      limit=entryPrice - t1Pts, 
+                      stop=entryPrice + stopPts, 
+                      comment_profit="TP1_Short(+25p)", 
+                      comment_loss="SL_Short(-20p)")
+
+        c2Stop = t1Reached ? (entryPrice - 0.50) : (entryPrice + stopPts)
+        strategy.exit("Exit_S_C2", "Short_C2", 
+                      limit=entryPrice - t2Pts, 
+                      stop=c2Stop, 
+                      comment_profit="TP2_Short(+50p)", 
+                      comment_loss=t1Reached ? "BE_Short(-0.5p)" : "SL_Short(-20p)")
+
+// ==============================================================================
+// 6. VISUALIZACIÓN EN EL GRÁFICO
+// ==============================================================================
+plot(ema200, "EMA 200 Macro Trend", color=color.purple, linewidth=2)
+plot(donchHigh, "Donchian High (20)", color=color.green, linewidth=1)
+plot(donchLow, "Donchian Low (20)", color=color.red, linewidth=1)
+
+plot(inPosition ? entryPrice : na, "Entrada", color=color.white, style=plot.style_linebr, linewidth=2)
+plot(inPosition and isLongPos ? entryPrice + t1Pts : inPosition and isShortPos ? entryPrice - t1Pts : na, "Target 1 (+25p)", color=color.lime, style=plot.style_linebr, linewidth=1)
+plot(inPosition and isLongPos ? entryPrice + t2Pts : inPosition and isShortPos ? entryPrice - t2Pts : na, "Target 2 (+50p)", color=color.aqua, style=plot.style_linebr, linewidth=2)
+plot(inPosition and isLongPos ? (t1Reached ? entryPrice + 0.50 : entryPrice - stopPts) : inPosition and isShortPos ? (t1Reached ? entryPrice - 0.50 : entryPrice + stopPts) : na, "Stop Loss", color=color.red, style=plot.style_linebr, linewidth=2)
+
+// ==============================================================================
+// 7. DASHBOARD MYFUNDEDFUTURES $25K
+// ==============================================================================
+var table hud = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 20), border_color=color.gray, border_width=1)
+if barstate.islast
+    netProfit = strategy.netprofit + strategy.openprofit
+    statusCol = netProfit >= targetFund ? color.green : (netProfit <= -maxDrawdown ? color.red : color.yellow)
+    statusTxt = netProfit >= targetFund ? "OBJETIVO SUPERADO ✓" : (netProfit <= -maxDrawdown ? "VIOLACIÓN TRAILING ⚠️" : "EN CURSO (ACTIVA)")
+
+    table.cell(hud, 0, 0, "Estrategia", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 0, "Donchian Asimétrico 25k", text_color=color.aqua, text_size=size.small)
+
+    table.cell(hud, 0, 1, "Estado", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 1, statusTxt, text_color=statusCol, text_size=size.small)
+
+    table.cell(hud, 0, 2, "Net PnL", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 2, str.tostring(netProfit, "$#,###.00"), text_color=netProfit >= 0 ? color.green : color.red, text_size=size.small)
+
+    table.cell(hud, 0, 3, "Suelo Trailing", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 3, "$24,000.00", text_color=color.orange, text_size=size.small)
+
+    table.cell(hud, 0, 4, "Meta ($1,500)", text_color=color.white, text_size=size.small)
+    table.cell(hud, 1, 4, str.tostring((netProfit / targetFund) * 100, "#.0") + "%", text_color=color.white, text_size=size.small)
