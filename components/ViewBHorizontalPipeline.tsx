@@ -14,6 +14,7 @@ import "reactflow/dist/style.css";
 import { GitBranch, RotateCcw } from "lucide-react";
 import { RejectionAnalysisPanel } from "./RejectionAnalysisPanel";
 import { LiveNLPReader } from "./LiveNLPReader";
+import { ViewFSystemStatus } from "./ViewFSystemStatus";
 
 interface SourceNodeData {
   label: string;
@@ -471,9 +472,9 @@ export function ViewBHorizontalPipeline() {
   const [selectedStage, setSelectedStage] = useState<string>("Testeados");
   const [resolvedTasks, setResolvedTasks] = useState<Record<string, "APROBADO" | "RECHAZADO">>({});
   const [actionBanner, setActionBanner] = useState<string | null>(null);
-  const [bottomPanelMode, setBottomPanelMode] = useState<"REJECTION" | "NLP" | "HIDDEN">(
-    "HIDDEN"
-  );
+  const [bottomPanelMode, setBottomPanelMode] = useState<
+    "REJECTION" | "NLP" | "TELEMETRY" | "HIDDEN"
+  >("HIDDEN");
 
   const pendingCount = INITIAL_DECISION_CARDS.filter((c) => !resolvedTasks[c.id]).length;
 
@@ -511,6 +512,19 @@ export function ViewBHorizontalPipeline() {
               <span className="h-2 w-2 animate-ping rounded-full bg-[#22d3ee]" />
               Nodo Activo: <strong>{selectedStage}</strong>
             </span>
+            <button
+              type="button"
+              onClick={() =>
+                setBottomPanelMode((m) => (m === "TELEMETRY" ? "HIDDEN" : "TELEMETRY"))
+              }
+              className={`rounded border px-2 py-0.5 transition ${
+                bottomPanelMode === "TELEMETRY"
+                  ? "border-[#fbbf24]/60 bg-[#fbbf24]/20 font-bold text-[#fbbf24]"
+                  : "border-[#fbbf24]/30 bg-[#030407] text-[#fbbf24] hover:bg-[#fbbf24]/15"
+              }`}
+            >
+              🎛️ Flota & Enjambre 10x10 (ZEUS)
+            </button>
             <button
               type="button"
               onClick={() =>
@@ -556,7 +570,12 @@ export function ViewBHorizontalPipeline() {
           </ReactFlowProvider>
         </div>
 
-        {/* DRAWER FLOTANTE DIRECTIVA V6: ANÁLISIS DE RECHAZO ("Waarom vallen ze af?") O LECTOR NLP EN VIVO */}
+        {/* DRAWER FLOTANTE DIRECTIVA V11 (TELEMETRÍA FLOTA & ENJAMBRE) + V6 (RECHAZO & NLP) */}
+        {bottomPanelMode === "TELEMETRY" && (
+          <div className="absolute inset-x-3.5 bottom-14 top-16 z-30 overflow-y-auto rounded-lg border border-[#fbbf24]/50 bg-[#050609]/95 p-2 shadow-[0_0_45px_rgba(0,0,0,0.9)] backdrop-blur-md">
+            <ViewFSystemStatus />
+          </div>
+        )}
         {bottomPanelMode === "REJECTION" && (
           <div className="absolute inset-x-3.5 bottom-14 z-30 max-h-[65%] overflow-y-auto rounded-lg border border-rose-500/40 bg-[#050609]/95 p-1 shadow-[0_-10px_35px_rgba(0,0,0,0.85)] backdrop-blur-md">
             <RejectionAnalysisPanel compact />
