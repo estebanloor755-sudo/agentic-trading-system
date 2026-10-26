@@ -278,8 +278,8 @@ export function ViewAParticleSphere() {
         </div>
       </div>
 
-      {/* ÁREA CENTRAL: ENTRADAS + ESFERA 3D + SALIDAS */}
-      <div className="relative my-1.5 grid min-h-0 flex-1 grid-cols-1 items-center gap-3 lg:grid-cols-12">
+      {/* ÁREA SUPERIOR (70% DEL ALTO DISPONIBLE): ENTRADAS + ESFERA 3D + SALIDAS */}
+      <div className="relative my-1.5 grid min-h-0 flex-grow basis-[68%] grid-cols-1 items-center gap-3 overflow-hidden lg:grid-cols-12">
         <svg
           viewBox="0 0 1000 500"
           preserveAspectRatio="none"
@@ -322,15 +322,15 @@ export function ViewAParticleSphere() {
         </svg>
 
         {/* LADO IZQUIERDO: FUENTES DE HOY (INPUTS) */}
-        <div className="z-10 flex h-full min-h-0 flex-col justify-between py-1 lg:col-span-3">
-          <div className="mb-1 flex items-center justify-between px-1">
+        <div className="z-10 flex h-full min-h-0 flex-col justify-between overflow-y-auto py-0.5 lg:col-span-3">
+          <div className="mb-1 flex shrink-0 items-center justify-between px-1">
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
               FUENTES DE HOY (ENTRADAS)
             </span>
             <span className="font-mono text-[10px] text-[#22d3ee]">100 Total</span>
           </div>
 
-          <div className="flex flex-1 flex-col justify-around gap-2">
+          <div className="flex min-h-0 flex-1 flex-col justify-around gap-1.5">
             {FUENTES_HOY.map((src) => {
               const isSelected = selectedSource === src.id;
               return (
@@ -338,7 +338,7 @@ export function ViewAParticleSphere() {
                   key={src.id}
                   type="button"
                   onClick={() => setSelectedSource(isSelected ? null : src.id)}
-                  className={`group relative flex flex-col justify-between rounded-lg border px-3 py-2 text-left transition ${
+                  className={`group relative flex flex-col justify-between rounded-lg border px-2.5 py-1.5 text-left transition ${
                     isSelected
                       ? "border-[#22d3ee]/60 bg-[#0d1320]"
                       : "border-[#1f222d] bg-[#050609]/90 hover:border-[#22d3ee]/40"
@@ -354,12 +354,12 @@ export function ViewAParticleSphere() {
                         ({src.unit})
                       </span>
                     </div>
-                    <span className="font-mono text-lg font-extrabold text-slate-100">
+                    <span className="font-mono text-base font-extrabold text-slate-100">
                       {src.count}
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-center justify-between gap-2">
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
                     <SourceSparkline data={src.sparkline} color="#22d3ee" />
                     <span className="font-mono text-[9px] text-[#22d3ee]/80">
                       {src.rate}
@@ -371,13 +371,13 @@ export function ViewAParticleSphere() {
           </div>
         </div>
 
-        {/* CENTRO: CANVAS 3D THREE.JS (ESFERA DE PARTÍCULAS) */}
-        <div className="relative z-10 flex h-full min-h-[260px] flex-col items-center justify-center lg:col-span-6">
-          <div className="pointer-events-none absolute h-72 w-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.12)_0%,rgba(74,222,128,0.03)_50%,transparent_72%)]" />
+        {/* CENTRO: CANVAS 3D THREE.JS (ESFERA DE PARTÍCULAS - 70% ALTO SUPERIOR) */}
+        <div className="relative z-10 flex h-full min-h-0 flex-grow flex-col items-center justify-center lg:col-span-6">
+          <div className="pointer-events-none absolute h-64 w-64 rounded-full bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.14)_0%,rgba(74,222,128,0.04)_50%,transparent_72%)]" />
 
-          <div className="h-full w-full cursor-grab active:cursor-grabbing">
+          <div className="h-full w-full flex-grow cursor-grab active:cursor-grabbing">
             <Canvas
-              camera={{ position: [0, 0, 5.6], fov: 45 }}
+              camera={{ position: [0, 0, 5.4], fov: 45 }}
               gl={{ alpha: true, antialias: true }}
             >
               <ambientLight intensity={0.8} />
@@ -386,22 +386,22 @@ export function ViewAParticleSphere() {
             </Canvas>
           </div>
 
-          <div className="pointer-events-none absolute bottom-1 flex items-center gap-2 rounded-full border border-[#1f222d] bg-[#050609]/90 px-3 py-1 font-mono text-[10px] text-slate-400">
+          <div className="pointer-events-none absolute bottom-1 flex items-center gap-2 rounded-full border border-[#1f222d] bg-[#050609]/90 px-3 py-0.5 font-mono text-[9.5px] text-slate-400">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-[#22d3ee]" />
             <span>RED NEURONAL • 1,900 NODOS ACTIVOS • ARRASTRA PARA ROTAR</span>
           </div>
         </div>
 
         {/* LADO DERECHO: SALIDAS DE HOY (OUTPUTS) */}
-        <div className="z-10 flex h-full min-h-0 flex-col justify-between py-1 lg:col-span-3">
-          <div className="mb-1 flex items-center justify-between px-1">
+        <div className="z-10 flex h-full min-h-0 flex-col justify-between overflow-y-auto py-0.5 lg:col-span-3">
+          <div className="mb-1 flex shrink-0 items-center justify-between px-1">
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
               SALIDAS DE HOY (OUTPUTS)
             </span>
             <span className="font-mono text-[10px] text-[#4ade80]">Síntesis en Vivo</span>
           </div>
 
-          <div className="flex flex-1 flex-col justify-around gap-2.5">
+          <div className="flex min-h-0 flex-1 flex-col justify-around gap-1.5">
             {SALIDAS_HOY.map((out) => {
               const valueColor =
                 out.accent === "green"
@@ -427,7 +427,7 @@ export function ViewAParticleSphere() {
               return (
                 <div
                   key={out.id}
-                  className="flex flex-col justify-between rounded-lg border border-[#1f222d] bg-[#050609]/90 p-3"
+                  className="flex flex-col justify-between rounded-lg border border-[#1f222d] bg-[#050609]/90 px-2.5 py-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -436,16 +436,16 @@ export function ViewAParticleSphere() {
                     <SourceSparkline data={out.sparkline} color={sparkColor} />
                   </div>
 
-                  <div className="my-1 flex items-baseline justify-between">
-                    <span className={`font-mono text-2xl font-extrabold tracking-tight ${valueColor}`}>
+                  <div className="my-0.5 flex items-baseline justify-between">
+                    <span className={`font-mono text-xl font-extrabold tracking-tight ${valueColor}`}>
                       {out.value}
                     </span>
-                    <span className="font-mono text-[10px] text-slate-500">
+                    <span className="font-mono text-[9.5px] text-slate-500">
                       {out.progress}% capacidad
                     </span>
                   </div>
 
-                  <p className="mb-2 text-[10px] leading-snug text-slate-400">
+                  <p className="mb-1 text-[9.5px] leading-snug text-slate-400">
                     {out.subvalue}
                   </p>
 
@@ -462,9 +462,9 @@ export function ViewAParticleSphere() {
         </div>
       </div>
 
-      {/* MÓDULO DIRECTIVA V6: LECTOR NLP EN VIVO (AGENTE HERMES) */}
+      {/* ÁREA INFERIOR (30% RÍGIDO CON OVERFLOW-Y-AUTO): LECTOR NLP EN VIVO (AGENTE HERMES) */}
       {showNlpReader && (
-        <div className="z-20 mb-1.5 shrink-0">
+        <div className="z-20 mb-1.5 h-44 shrink-0 overflow-y-auto xl:h-48">
           <LiveNLPReader compact />
         </div>
       )}

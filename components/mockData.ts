@@ -44,6 +44,7 @@ export type SubAgentId =
   | "KRONOS"
   | "ORION"
   | "HERMES"
+  | "ATHENA"
   | "CORTEX"
   | "SENTINEL"
   | "FINBERT";
@@ -79,11 +80,21 @@ export const SUB_AGENT_SPECS: Record<SubAgentId, SubAgentSpec> = {
   HERMES: {
     id: "HERMES",
     roleTitle: "Agente Investigador NLP",
-    shortTag: "ArXiv / Macro / FinBERT",
+    shortTag: "ArXiv / NER / FinBERT",
     specialty:
       "Extrae contexto macroeconómico, lee papers de ArXiv y procesa sentimiento institucional (FinBERT).",
     accentColor: "#eab308",
     badgeClass: "border-[#eab308]/40 bg-[#eab308]/10 text-[#eab308]"
+  },
+  ATHENA: {
+    id: "ATHENA",
+    roleTitle: "Agente Macro y de Sentimiento",
+    shortTag: "FOMC / CPI / Bloomberg",
+    specialty:
+      "Lee transcripciones del FOMC, calendario económico (CPI, NFP), Fed Speakers (Nick Timiraos) y titulares de Bloomberg.",
+    accentColor: "#d946ef",
+    badgeClass:
+      "border-[#a855f7]/60 bg-[#a855f7]/15 text-[#d946ef] shadow-[0_0_10px_rgba(168,85,247,0.2)]"
   },
   CORTEX: {
     id: "CORTEX",
@@ -91,8 +102,8 @@ export const SUB_AGENT_SPECS: Record<SubAgentId, SubAgentSpec> = {
     shortTag: "AST / Python Vectorizado",
     specialty:
       "Transforma la lógica en código Python vectorizado para el backtest.",
-    accentColor: "#a78bfa",
-    badgeClass: "border-purple-400/40 bg-purple-500/10 text-purple-300"
+    accentColor: "#38bdf8",
+    badgeClass: "border-sky-400/40 bg-sky-500/10 text-sky-300"
   },
   SENTINEL: {
     id: "SENTINEL",
@@ -119,7 +130,7 @@ export interface AgentLogEntry {
   time: string;
   agent: SubAgentId;
   message: string;
-  level: "green" | "cyan" | "mustard" | "muted";
+  level: "green" | "cyan" | "mustard" | "purple" | "muted";
 }
 
 export const FUNNEL_KPIS: FunnelKpi[] = [
@@ -501,29 +512,45 @@ export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
   {
     id: "log-1",
     time: "17:54:12.04",
+    agent: "ATHENA",
+    message:
+      "ATHENA: Tono 'Hawkish' detectado en actas del FOMC. Bloqueando estrategias de Mean Reversion para NQ.",
+    level: "purple"
+  },
+  {
+    id: "log-2",
+    time: "17:54:14.89",
     agent: "KRONOS",
     message:
       "[Price Action & Orderflow] Detectado Liquidity Sweep en mínimo de Londres + Fair Value Gap (FVG) alcista en NQ 5m",
     level: "green"
   },
   {
-    id: "log-2",
-    time: "17:54:14.89",
+    id: "log-3",
+    time: "17:54:16.45",
+    agent: "ATHENA",
+    message:
+      "ATHENA: Rumor de shock geopolítico en Medio Oriente. Aumentando ponderación en setups de liquidez de XAU/USD.",
+    level: "purple"
+  },
+  {
+    id: "log-4",
+    time: "17:54:18.31",
     agent: "HERMES",
     message:
       "[NLP & ArXiv] Paper '2610.09412v1' procesado -> Entidades NER extraídas: 'VWAP', 'order block', 'fair value gap' (FinBERT +0.84)",
     level: "mustard"
   },
   {
-    id: "log-3",
-    time: "17:54:18.31",
+    id: "log-5",
+    time: "17:54:20.12",
     agent: "CORTEX",
     message:
       "[Codificador AST] Hipótesis transformada en script Python vectorizado NumPy (0 bucles for) -> compilado en 14ms",
     level: "cyan"
   },
   {
-    id: "log-4",
+    id: "log-6",
     time: "17:54:21.77",
     agent: "ORION",
     message:
@@ -531,11 +558,11 @@ export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
     level: "cyan"
   },
   {
-    id: "log-5",
+    id: "log-7",
     time: "17:54:25.10",
-    agent: "ORION",
+    agent: "ATHENA",
     message:
-      "[Filtro de Rechazo] Descartada variante 'Keltner_Break_v2': Max Drawdown (6.2%) supera el límite institucional (4.5%)",
-    level: "mustard"
+      "ATHENA: Divergencia cualitativa. Precio subiendo, pero sentimiento de flujo institucional negativo (-0.65). Precaución.",
+    level: "purple"
   }
 ];

@@ -333,10 +333,10 @@ export default function TradeBreinMasterApp() {
           <div className="hidden rounded-md border border-[#1f222d] bg-[#050609] p-2 xl:block">
             <div className="mb-1.5 flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-wider text-slate-400">
               <span>Flota Sub-Agentes</span>
-              <span className="text-[#4ade80]">4 Activos</span>
+              <span className="text-[#4ade80]">5 Activos</span>
             </div>
             <div className="space-y-1 font-mono text-[8.5px]">
-              {(["KRONOS", "ORION", "HERMES", "CORTEX"] as const).map((agId) => {
+              {(["KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const).map((agId) => {
                 const spec = SUB_AGENT_SPECS[agId];
                 const isFiltered = agentFilter === agId;
                 return (
@@ -609,29 +609,43 @@ export default function TradeBreinMasterApp() {
               >
                 {latestLog.agent} • {SUB_AGENT_SPECS[latestLog.agent]?.roleTitle ?? "Agente"}
               </span>
-              <span className="truncate text-slate-300">{latestLog.message}</span>
+              <span
+                className={`truncate ${
+                  latestLog.agent === "ATHENA" || latestLog.level === "purple"
+                    ? "font-semibold text-[#d946ef]"
+                    : "text-slate-300"
+                }`}
+              >
+                {latestLog.message}
+              </span>
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
-              {/* Filtros rápidos por Sub-Agente (Directiva V6) */}
+              {/* Filtros rápidos por Sub-Agente (Directivas V6 y V8 con ATHENA) */}
               <div className="hidden items-center gap-1 lg:flex">
-                {(["ALL", "KRONOS", "ORION", "HERMES", "CORTEX"] as const).map((ag) => (
-                  <button
-                    key={ag}
-                    type="button"
-                    onClick={() => {
-                      setAgentFilter(ag);
-                      if (ag !== "ALL") setLogsExpanded(true);
-                    }}
-                    className={`rounded border px-1.5 py-0.5 text-[9px] font-bold transition ${
-                      agentFilter === ag
-                        ? "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
-                        : "border-[#1f222d] bg-[#0a0b10] text-slate-500 hover:text-slate-200"
-                    }`}
-                  >
-                    {ag === "ALL" ? "TODOS" : ag}
-                  </button>
-                ))}
+                {(["ALL", "KRONOS", "ORION", "HERMES", "ATHENA", "CORTEX"] as const).map(
+                  (ag) => (
+                    <button
+                      key={ag}
+                      type="button"
+                      onClick={() => {
+                        setAgentFilter(ag);
+                        if (ag !== "ALL") setLogsExpanded(true);
+                      }}
+                      className={`rounded border px-1.5 py-0.5 text-[9px] font-bold transition ${
+                        agentFilter === ag
+                          ? ag === "ATHENA"
+                            ? "border-[#a855f7] bg-[#a855f7]/20 text-[#d946ef]"
+                            : "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                          : ag === "ATHENA"
+                          ? "border-[#a855f7]/40 bg-[#a855f7]/10 text-[#d946ef] hover:bg-[#a855f7]/20"
+                          : "border-[#1f222d] bg-[#0a0b10] text-slate-500 hover:text-slate-200"
+                      }`}
+                    >
+                      {ag === "ALL" ? "TODOS" : ag}
+                    </button>
+                  )
+                )}
               </div>
 
               <button
@@ -686,7 +700,15 @@ export default function TradeBreinMasterApp() {
                       >
                         [{spec.id} • {spec.roleTitle}]
                       </span>
-                      <span className="text-slate-300">{entry.message}</span>
+                      <span
+                        className={
+                          entry.agent === "ATHENA" || entry.level === "purple"
+                            ? "font-semibold text-[#d946ef]"
+                            : "text-slate-300"
+                        }
+                      >
+                        {entry.message}
+                      </span>
                     </div>
                   );
                 })}

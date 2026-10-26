@@ -213,9 +213,9 @@ export function LiveNLPReader({ compact = false }: LiveNLPReaderProps) {
     ) ?? sample.entities[0];
 
   return (
-    <div className="flex flex-col justify-between rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3">
+    <div className="flex h-full min-h-0 flex-col justify-between overflow-y-auto rounded-lg border border-[#1f222d] bg-[#0a0b10] p-2.5">
       {/* HEADER DEL LECTOR NLP (AGENTE HERMES) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-1.5">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded border border-[#eab308]/40 bg-[#eab308]/10">
             <Sparkles className="h-3.5 w-3.5 text-[#eab308]" />
@@ -269,8 +269,8 @@ export function LiveNLPReader({ compact = false }: LiveNLPReaderProps) {
       </div>
 
       {/* CUERPO: TEXTO EN INGLÉS CON RESALTADO NER VERDE NEÓN (#4ade80) Y TEXTO NEGRO */}
-      <div className="my-2 grid grid-cols-1 gap-2.5 lg:grid-cols-12">
-        <div className="flex flex-col justify-between rounded border border-[#1f222d] bg-[#050608] p-2.5 lg:col-span-7">
+      <div className="mt-1.5 grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-12">
+        <div className="flex min-h-0 flex-col justify-between overflow-y-auto rounded border border-[#1f222d] bg-[#050608] p-2 lg:col-span-7">
           <div className="mb-1.5 flex items-center justify-between font-mono text-[9px] text-slate-400">
             <span className="flex items-center gap-1.5 text-[#22d3ee]">
               <FileText className="h-3 w-3" />

@@ -24,7 +24,7 @@ export interface FunnelTelemetry {
 export interface IncomingLogPayload {
   agent: SubAgentId;
   message: string;
-  tone: "green" | "cyan" | "mustard" | "muted";
+  tone: "green" | "cyan" | "mustard" | "purple" | "muted";
 }
 
 export interface SystemTickPayload {

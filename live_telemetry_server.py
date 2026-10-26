@@ -50,12 +50,14 @@ REGIMES = [
 ]
 
 AGENT_EVENTS = [
+    ("ATHENA", "ATHENA: Tono 'Hawkish' detectado en actas del FOMC. Bloqueando estrategias de Mean Reversion para NQ.", "purple"),
+    ("ATHENA", "ATHENA: Rumor de shock geopolitico en Medio Oriente. Aumentando ponderacion en setups de liquidez de XAU/USD.", "purple"),
+    ("ATHENA", "ATHENA: Divergencia cualitativa. Precio subiendo, pero sentimiento de flujo institucional negativo (-0.65). Precaucion.", "purple"),
     ("KRONOS", "[Agente Tecnico] Liquidity Sweep + Fair Value Gap (FVG) detectado en NQ 5m (Confluencia Orderflow 92%)", "green"),
     ("ORION", "[Agente Cuantitativo] Evaluando riesgo Reversion-Media NQ v4... {pct}% | Sharpe IS: 2.94 | Sortino: 3.48 | DD < 4.5%", "cyan"),
     ("HERMES", "[Agente Investigador NLP] Paper arXiv '2610.{doc}' analizado -> NER: 'VWAP', 'order block' | FinBERT +{score}", "mustard"),
     ("CORTEX", "[Agente Codificador] Logica compilada a Python vectorizado NumPy (AST limpio, 0 lookahead bias) en 12ms", "cyan"),
     ("ORION", "[Filtro Cuantitativo] Descartada variante: Max Drawdown > Limite Institucional (4.5%) | Falla prueba OOS", "mustard"),
-    ("KRONOS", "[Agente Tecnico] Patron geometrico CHoCH + Order Block institucional validado en ES 15m", "green"),
 ]
 
 CONNECTED_CLIENTS: set[Any] = set()
