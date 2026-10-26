@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
+  Activity,
   BookOpen,
   Bot,
   CheckCircle2,
@@ -24,6 +25,7 @@ import {
   Zap
 } from "lucide-react";
 import { ViewCStrategiesSplit } from "../components/ViewCStrategiesSplit";
+import { ViewFSystemStatus } from "../components/ViewFSystemStatus";
 import { SUB_AGENT_SPECS, type SubAgentId } from "../components/mockData";
 import { useQuantStream } from "../hooks/useQuantStream";
 
@@ -63,8 +65,14 @@ const ViewDSetupValidator = dynamic(
   }
 );
 
-type SidebarSection = "resumen" | "investigacion" | "estrategias" | "conocimiento" | "envivo";
-type CoreViewMode = "VIEW_A" | "VIEW_B" | "VIEW_C" | "VIEW_D" | "VIEW_E";
+type SidebarSection =
+  | "resumen"
+  | "investigacion"
+  | "estrategias"
+  | "conocimiento"
+  | "systeemstatus"
+  | "envivo";
+type CoreViewMode = "VIEW_A" | "VIEW_B" | "VIEW_C" | "VIEW_D" | "VIEW_F" | "VIEW_E";
 
 interface ExternalAuditResult {
   source: string;
@@ -233,6 +241,14 @@ export default function TradeBreinMasterApp() {
         badge: String(funnel.approved)
       },
       {
+        id: "systeemstatus" as const,
+        title: "Systeemstatus",
+        subtitle: "Estado del Sistema",
+        defaultView: "VIEW_F" as const,
+        icon: Activity,
+        badge: "ZEUS"
+      },
+      {
         id: "envivo" as const,
         title: "En Vivo (NQ MT5)",
         subtitle: "Terminal Anterior",
@@ -314,6 +330,8 @@ export default function TradeBreinMasterApp() {
                           className={`rounded px-1.5 py-0.2 font-mono text-[9px] font-bold ${
                             item.id === "envivo"
                               ? "bg-[#4ade80]/15 text-[#4ade80]"
+                              : item.id === "systeemstatus"
+                              ? "border border-[#fbbf24]/40 bg-[#fbbf24]/15 text-[#fbbf24]"
                               : "bg-[#1f222d] text-slate-300"
                           }`}
                         >
@@ -485,7 +503,7 @@ export default function TradeBreinMasterApp() {
               <span>Auditoría IA</span>
             </button>
 
-            {/* Conmutador de las 5 Vistas Dinámicas (incluye Trabajo Anterior NQ MT5) */}
+            {/* Conmutador de las 6 Vistas Dinámicas (incluye Systeemstatus V11 y Trabajo Anterior NQ MT5) */}
             <div className="flex items-center gap-1 rounded-md border border-[#1f222d] bg-[#030407] p-0.5 font-mono text-[10px]">
               {(
                 [
@@ -493,6 +511,7 @@ export default function TradeBreinMasterApp() {
                   { id: "VIEW_B", label: "Vista B: Pipeline" },
                   { id: "VIEW_C", label: "Vista C: Estrategias IS/OOS" },
                   { id: "VIEW_D", label: "Vista D: Validador" },
+                  { id: "VIEW_F", label: "Vista F: Systeemstatus (Flota)" },
                   { id: "VIEW_E", label: "Vista E: Terminal NQ (Anterior)" }
                 ] as const
               ).map((v) => (
@@ -500,9 +519,11 @@ export default function TradeBreinMasterApp() {
                   key={v.id}
                   type="button"
                   onClick={() => setActiveView(v.id)}
-                  className={`rounded px-2.5 py-1 transition ${
+                  className={`rounded px-2 py-1 transition ${
                     activeView === v.id
-                      ? "border border-[#4ade80]/40 bg-[#4ade80]/15 font-bold text-[#4ade80]"
+                      ? v.id === "VIEW_F"
+                        ? "border border-[#fbbf24]/50 bg-[#fbbf24]/15 font-bold text-[#fbbf24]"
+                        : "border border-[#4ade80]/40 bg-[#4ade80]/15 font-bold text-[#4ade80]"
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
@@ -581,6 +602,12 @@ export default function TradeBreinMasterApp() {
               onValidateSetup={sendHumanValidation}
               zeusAutonomous={zeusAutonomous}
               onToggleZeusAutonomous={setZeusAutonomous}
+            />
+          )}
+          {activeView === "VIEW_F" && (
+            <ViewFSystemStatus
+              hmmRegime={lastTick.hmm_regime}
+              finbertScore={lastTick.finbert_score}
             />
           )}
           {activeView === "VIEW_E" && (
