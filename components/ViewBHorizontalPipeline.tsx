@@ -12,6 +12,8 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GitBranch, RotateCcw } from "lucide-react";
+import { RejectionAnalysisPanel } from "./RejectionAnalysisPanel";
+import { LiveNLPReader } from "./LiveNLPReader";
 
 interface SourceNodeData {
   label: string;
@@ -469,6 +471,9 @@ export function ViewBHorizontalPipeline() {
   const [selectedStage, setSelectedStage] = useState<string>("Testeados");
   const [resolvedTasks, setResolvedTasks] = useState<Record<string, "APROBADO" | "RECHAZADO">>({});
   const [actionBanner, setActionBanner] = useState<string | null>(null);
+  const [bottomPanelMode, setBottomPanelMode] = useState<"REJECTION" | "NLP" | "HIDDEN">(
+    "REJECTION"
+  );
 
   const pendingCount = INITIAL_DECISION_CARDS.filter((c) => !resolvedTasks[c.id]).length;
 
@@ -501,19 +506,42 @@ export function ViewBHorizontalPipeline() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 font-mono text-[10px]">
-            <span className="flex items-center gap-1.5 rounded border border-[#22d3ee]/30 bg-[#22d3ee]/10 px-2.5 py-1 text-[#22d3ee]">
+          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+            <span className="flex items-center gap-1.5 rounded border border-[#22d3ee]/30 bg-[#22d3ee]/10 px-2 py-0.5 text-[#22d3ee]">
               <span className="h-2 w-2 animate-ping rounded-full bg-[#22d3ee]" />
               Nodo Activo: <strong>{selectedStage}</strong>
             </span>
-            <span className="hidden rounded border border-[#1f222d] bg-[#030407] px-2.5 py-1 text-slate-400 sm:inline">
-              Conversión Total: <strong className="text-[#4ade80]">0.73%</strong>
-            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setBottomPanelMode((m) => (m === "REJECTION" ? "HIDDEN" : "REJECTION"))
+              }
+              className={`rounded border px-2 py-0.5 transition ${
+                bottomPanelMode === "REJECTION"
+                  ? "border-rose-500/50 bg-rose-500/15 font-bold text-rose-300"
+                  : "border-[#1f222d] bg-[#030407] text-slate-400 hover:text-white"
+              }`}
+            >
+              📊 Análisis de Rechazo (ORION)
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setBottomPanelMode((m) => (m === "NLP" ? "HIDDEN" : "NLP"))
+              }
+              className={`rounded border px-2 py-0.5 transition ${
+                bottomPanelMode === "NLP"
+                  ? "border-[#4ade80]/50 bg-[#4ade80]/15 font-bold text-[#4ade80]"
+                  : "border-[#1f222d] bg-[#030407] text-slate-400 hover:text-white"
+              }`}
+            >
+              🧠 Lector NLP (HERMES)
+            </button>
           </div>
         </div>
 
-        <div className="relative my-2 min-h-0 flex-1 overflow-hidden rounded border border-[#1f222d]/60 bg-[#0a0b10]">
-          <div className="pointer-events-none absolute inset-x-4 top-2.5 z-10 flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-slate-500">
+        <div className="relative my-1.5 min-h-[165px] flex-1 overflow-hidden rounded border border-[#1f222d]/60 bg-[#0a0b10]">
+          <div className="pointer-events-none absolute inset-x-4 top-2 z-10 flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-slate-500">
             <span>1. INGESTA FUENTES (407)</span>
             <span>2. SÍNTESIS E IDEACIÓN (1,308)</span>
             <span className="text-[#22d3ee]">3. BACKTEST Y FILTRO (343)</span>
@@ -527,6 +555,18 @@ export function ViewBHorizontalPipeline() {
             />
           </ReactFlowProvider>
         </div>
+
+        {/* PANEL INFERIOR DIRECTIVA V6: ANÁLISIS DE RECHAZO ("Waarom vallen ze af?") O LECTOR NLP EN VIVO */}
+        {bottomPanelMode === "REJECTION" && (
+          <div className="mb-1.5 shrink-0">
+            <RejectionAnalysisPanel compact />
+          </div>
+        )}
+        {bottomPanelMode === "NLP" && (
+          <div className="mb-1.5 shrink-0">
+            <LiveNLPReader compact />
+          </div>
+        )}
 
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-[#1f222d] pt-2.5 font-mono text-[10px] sm:grid-cols-4">
           <div className="flex items-center justify-between rounded border border-[#1f222d] bg-[#050609] px-2.5 py-1.5">

@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { INITIAL_AGENT_LOGS, type AgentLogEntry } from "../components/mockData";
+import {
+  INITIAL_AGENT_LOGS,
+  type AgentLogEntry,
+  type SubAgentId
+} from "../components/mockData";
 
 export type StreamConnectionStatus =
   | "CONNECTING"
@@ -18,7 +22,7 @@ export interface FunnelTelemetry {
 }
 
 export interface IncomingLogPayload {
-  agent: "ORION" | "CORTEX" | "KRONOS" | "FINBERT" | "SENTINEL";
+  agent: SubAgentId;
   message: string;
   tone: "green" | "cyan" | "mustard" | "muted";
 }
@@ -164,10 +168,13 @@ export function useQuantStream(wsEndpoint: string = DEFAULT_WS_ENDPOINT) {
               setLastTick(parsed);
 
               if (parsed.latest_log && parsed.latest_log.message) {
+                const rawAgent = parsed.latest_log.agent || "ORION";
+                const normalizedAgent: SubAgentId =
+                  rawAgent === "FINBERT" ? "HERMES" : rawAgent;
                 const newEntry: AgentLogEntry = {
                   id: `ws-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                   time: parsed.timestamp,
-                  agent: parsed.latest_log.agent || "ORION",
+                  agent: normalizedAgent,
                   message: parsed.latest_log.message,
                   level: parsed.latest_log.tone || "cyan"
                 };

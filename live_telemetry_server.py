@@ -50,12 +50,12 @@ REGIMES = [
 ]
 
 AGENT_EVENTS = [
-    ("ORION", "Ejecutando backtest Reversion-Media NQ v4... {pct}% completado (Sharpe IS: 2.94)", "cyan"),
-    ("CORTEX", "Paper arXiv '2610.{doc}' procesado -> 3 variantes generadas para ES 5m", "cyan"),
-    ("KRONOS", "Filtro Walk-Forward OOS superado en Barrido-Liquidez GC (Retencion: 87.4%)", "green"),
-    ("FINBERT", "Cross-Attention Macro CME actualizado: Score +{score} (Flujo Institucional)", "cyan"),
-    ("SENTINEL", "Descartada variante sobreajustada (Decay OOS > 35%, MaxDD -5.1%)", "mustard"),
-    ("ORION", "Simulacion Monte Carlo (1,000 runs) validada en Seguidor-Tendencia ES", "green"),
+    ("KRONOS", "[Agente Tecnico] Liquidity Sweep + Fair Value Gap (FVG) detectado en NQ 5m (Confluencia Orderflow 92%)", "green"),
+    ("ORION", "[Agente Cuantitativo] Evaluando riesgo Reversion-Media NQ v4... {pct}% | Sharpe IS: 2.94 | Sortino: 3.48 | DD < 4.5%", "cyan"),
+    ("HERMES", "[Agente Investigador NLP] Paper arXiv '2610.{doc}' analizado -> NER: 'VWAP', 'order block' | FinBERT +{score}", "mustard"),
+    ("CORTEX", "[Agente Codificador] Logica compilada a Python vectorizado NumPy (AST limpio, 0 lookahead bias) en 12ms", "cyan"),
+    ("ORION", "[Filtro Cuantitativo] Descartada variante: Max Drawdown > Limite Institucional (4.5%) | Falla prueba OOS", "mustard"),
+    ("KRONOS", "[Agente Tecnico] Patron geometrico CHoCH + Order Block institucional validado en ES 15m", "green"),
 ]
 
 CONNECTED_CLIENTS: set[Any] = set()

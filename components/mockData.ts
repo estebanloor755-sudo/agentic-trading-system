@@ -40,10 +40,84 @@ export interface SpaghettiCurve {
   sharpeOOS: number;
 }
 
+export type SubAgentId =
+  | "KRONOS"
+  | "ORION"
+  | "HERMES"
+  | "CORTEX"
+  | "SENTINEL"
+  | "FINBERT";
+
+export interface SubAgentSpec {
+  id: SubAgentId;
+  roleTitle: string;
+  shortTag: string;
+  specialty: string;
+  accentColor: string;
+  badgeClass: string;
+}
+
+export const SUB_AGENT_SPECS: Record<SubAgentId, SubAgentSpec> = {
+  KRONOS: {
+    id: "KRONOS",
+    roleTitle: "Agente Técnico",
+    shortTag: "PA / Orderflow / FVG",
+    specialty:
+      "Analiza Price Action, Orderflow, Liquidity Sweeps, FVGs y patrones geométricos.",
+    accentColor: "#4ade80",
+    badgeClass: "border-[#4ade80]/40 bg-[#4ade80]/10 text-[#4ade80]"
+  },
+  ORION: {
+    id: "ORION",
+    roleTitle: "Agente Cuantitativo",
+    shortTag: "Riesgo / Sharpe / OOS",
+    specialty:
+      "Analiza métricas de riesgo (Sharpe, Sortino, Monte Carlo, Degradación Out-of-Sample, Expectancy).",
+    accentColor: "#22d3ee",
+    badgeClass: "border-[#22d3ee]/40 bg-[#22d3ee]/10 text-[#22d3ee]"
+  },
+  HERMES: {
+    id: "HERMES",
+    roleTitle: "Agente Investigador NLP",
+    shortTag: "ArXiv / Macro / FinBERT",
+    specialty:
+      "Extrae contexto macroeconómico, lee papers de ArXiv y procesa sentimiento institucional (FinBERT).",
+    accentColor: "#eab308",
+    badgeClass: "border-[#eab308]/40 bg-[#eab308]/10 text-[#eab308]"
+  },
+  CORTEX: {
+    id: "CORTEX",
+    roleTitle: "Agente Codificador",
+    shortTag: "AST / Python Vectorizado",
+    specialty:
+      "Transforma la lógica en código Python vectorizado para el backtest.",
+    accentColor: "#a78bfa",
+    badgeClass: "border-purple-400/40 bg-purple-500/10 text-purple-300"
+  },
+  SENTINEL: {
+    id: "SENTINEL",
+    roleTitle: "Auditor Human-in-the-Loop",
+    shortTag: "Validación Humana",
+    specialty:
+      "Supervisa aprobaciones manuales y bloquea sobreajuste en tiempo real.",
+    accentColor: "#4ade80",
+    badgeClass: "border-[#4ade80]/40 bg-[#4ade80]/15 text-[#4ade80]"
+  },
+  FINBERT: {
+    id: "FINBERT",
+    roleTitle: "Agente Investigador NLP (HERMES)",
+    shortTag: "FinBERT / Macro",
+    specialty:
+      "Sub-módulo de HERMES para inferencia de sentimiento institucional.",
+    accentColor: "#eab308",
+    badgeClass: "border-[#eab308]/40 bg-[#eab308]/10 text-[#eab308]"
+  }
+};
+
 export interface AgentLogEntry {
   id: string;
   time: string;
-  agent: "ORION" | "CORTEX" | "KRONOS" | "FINBERT" | "SENTINEL";
+  agent: SubAgentId;
   message: string;
   level: "green" | "cyan" | "mustard" | "muted";
 }
@@ -427,36 +501,41 @@ export const INITIAL_AGENT_LOGS: AgentLogEntry[] = [
   {
     id: "log-1",
     time: "17:54:12.04",
-    agent: "ORION",
-    message: "Ejecutando backtest vectorizado Reversión-Media NQ v4 (1,251/1,308)... 95.6% completado",
+    agent: "KRONOS",
+    message:
+      "[Price Action & Orderflow] Detectado Liquidity Sweep en mínimo de Londres + Fair Value Gap (FVG) alcista en NQ 5m",
     level: "green"
   },
   {
     id: "log-2",
     time: "17:54:14.89",
-    agent: "CORTEX",
-    message: "Paper ArXiv '2610.09412v1' extraído -> Hipótesis generada: Desbalance_Flujo_ES_5m",
-    level: "cyan"
+    agent: "HERMES",
+    message:
+      "[NLP & ArXiv] Paper '2610.09412v1' procesado -> Entidades NER extraídas: 'VWAP', 'order block', 'fair value gap' (FinBERT +0.84)",
+    level: "mustard"
   },
   {
     id: "log-3",
     time: "17:54:18.31",
-    agent: "KRONOS",
-    message: "Filtro Walk-Forward OOS superado por 'Seguidor-Tendencia ES' (Retención Sharpe: 88.7%, P95 MC OK)",
-    level: "green"
+    agent: "CORTEX",
+    message:
+      "[Codificador AST] Hipótesis transformada en script Python vectorizado NumPy (0 bucles for) -> compilado en 14ms",
+    level: "cyan"
   },
   {
     id: "log-4",
     time: "17:54:21.77",
-    agent: "SENTINEL",
-    message: "Descartado 'Ruptura-Keltner DAX': Degradación Out-Of-Sample severa (Sharpe OOS 0.42 < 1.50)",
-    level: "mustard"
+    agent: "ORION",
+    message:
+      "[Riesgo & OOS] Auditoría cuantitativa completada: Sharpe IS 2.84 | Sortino 3.41 | Retención OOS 88.7% | Expectancy +$142/trade",
+    level: "cyan"
   },
   {
     id: "log-5",
     time: "17:54:25.10",
-    agent: "FINBERT",
-    message: "Sentimiento Macro CME Globex actualizado: Sesgo Alcista (+0.82) | Latencia DMA: 71ms",
-    level: "cyan"
+    agent: "ORION",
+    message:
+      "[Filtro de Rechazo] Descartada variante 'Keltner_Break_v2': Max Drawdown (6.2%) supera el límite institucional (4.5%)",
+    level: "mustard"
   }
 ];

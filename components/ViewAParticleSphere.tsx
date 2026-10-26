@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { LiveNLPReader } from "./LiveNLPReader";
 
 interface SourceTodayItem {
   id: string;
@@ -237,12 +238,13 @@ function BreinKernParticleSphere({ pulseSpeed = 1 }: { pulseSpeed?: number }) {
 
 export function ViewAParticleSphere() {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const [showNlpReader, setShowNlpReader] = useState<boolean>(true);
   const eqBars = [0.35, 0.85, 0.55, 0.95, 0.45, 0.75, 0.9, 0.4, 0.8, 0.6, 0.95, 0.5];
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col justify-between overflow-hidden rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3.5">
+    <div className="relative flex h-full min-h-0 w-full flex-col justify-between overflow-hidden rounded-lg border border-[#1f222d] bg-[#0a0b10] p-3">
       {/* HEADER INTERNO */}
-      <div className="z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2.5">
+      <div className="z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[#1f222d] pb-2">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee]" />
           <h2 className="font-mono text-xs font-bold tracking-wide text-slate-200">
@@ -262,6 +264,17 @@ export function ViewAParticleSphere() {
           <span>
             Variantes: <strong className="text-[#4ade80]">684 probadas</strong>
           </span>
+          <button
+            type="button"
+            onClick={() => setShowNlpReader((prev) => !prev)}
+            className={`rounded border px-2 py-0.5 font-mono text-[9px] font-bold transition ${
+              showNlpReader
+                ? "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                : "border-[#1f222d] bg-[#030407] text-slate-400 hover:text-white"
+            }`}
+          >
+            {showNlpReader ? "▼ Ocultar Lector NLP (HERMES)" : "▲ Abrir Lector NLP (HERMES)"}
+          </button>
         </div>
       </div>
 
@@ -448,6 +461,13 @@ export function ViewAParticleSphere() {
           </div>
         </div>
       </div>
+
+      {/* MÓDULO DIRECTIVA V6: LECTOR NLP EN VIVO (AGENTE HERMES) */}
+      {showNlpReader && (
+        <div className="z-20 mb-1.5 shrink-0">
+          <LiveNLPReader compact />
+        </div>
+      )}
 
       {/* FOOTER INTERNO DE ACTIVIDAD */}
       <div className="z-20 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#1f222d] bg-[#050609] px-3 py-2 font-mono text-[10px]">

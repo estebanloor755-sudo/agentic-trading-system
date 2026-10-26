@@ -24,6 +24,7 @@ import {
   Zap
 } from "lucide-react";
 import { ViewCStrategiesSplit } from "../components/ViewCStrategiesSplit";
+import { SUB_AGENT_SPECS, type SubAgentId } from "../components/mockData";
 import { useQuantStream } from "../hooks/useQuantStream";
 
 const ViewAParticleSphere = dynamic(
@@ -80,6 +81,7 @@ export default function TradeBreinMasterApp() {
   const [activeView, setActiveView] = useState<CoreViewMode>("VIEW_C");
   const [logsExpanded, setLogsExpanded] = useState<boolean>(false);
   const [logsPaused, setLogsPaused] = useState<boolean>(false);
+  const [agentFilter, setAgentFilter] = useState<"ALL" | SubAgentId>("ALL");
 
   // Estado para el Auditor de IA Externa
   const [showAuditModal, setShowAuditModal] = useState<boolean>(false);
@@ -326,8 +328,44 @@ export default function TradeBreinMasterApp() {
           </nav>
         </div>
 
-        {/* Estado del Motor y WebSocket */}
-        <div className="space-y-2 border-t border-[#1f222d] pt-3">
+        {/* Flota de Sub-Agentes Hiper-Especializados (Directiva V6) + Estado del Motor */}
+        <div className="space-y-2 border-t border-[#1f222d] pt-2.5">
+          <div className="hidden rounded-md border border-[#1f222d] bg-[#050609] p-2 xl:block">
+            <div className="mb-1.5 flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              <span>Flota Sub-Agentes</span>
+              <span className="text-[#4ade80]">4 Activos</span>
+            </div>
+            <div className="space-y-1 font-mono text-[8.5px]">
+              {(["KRONOS", "ORION", "HERMES", "CORTEX"] as const).map((agId) => {
+                const spec = SUB_AGENT_SPECS[agId];
+                const isFiltered = agentFilter === agId;
+                return (
+                  <button
+                    key={agId}
+                    type="button"
+                    onClick={() => {
+                      setAgentFilter(isFiltered ? "ALL" : agId);
+                      setLogsExpanded(true);
+                    }}
+                    className={`flex w-full items-center justify-between rounded border px-1.5 py-1 text-left transition ${
+                      isFiltered
+                        ? "border-[#22d3ee]/50 bg-[#121624] text-white"
+                        : "border-[#1f222d]/60 bg-[#030407] text-slate-400 hover:text-slate-200"
+                    }`}
+                    title={spec.specialty}
+                  >
+                    <span className="font-bold" style={{ color: spec.accentColor }}>
+                      {spec.id}
+                    </span>
+                    <span className="truncate pl-1 text-[8px] text-slate-500">
+                      {spec.shortTag}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="rounded-md border border-[#1f222d] bg-[#030407] p-2">
             <div className="flex items-center justify-center gap-2 xl:justify-start">
               <span
@@ -547,37 +585,55 @@ export default function TradeBreinMasterApp() {
         </main>
 
         {/* ===================================================================
-            PASO 4: TERMINAL DE LOGS INFERIOR
+            PASO 4: TERMINAL DE LOGS INFERIOR (CON ROLES KRONOS, ORION, HERMES, CORTEX)
         ==================================================================== */}
         <footer
           aria-label="Terminal de Agentes en Segundo Plano"
           className={`shrink-0 border-t border-[#1f222d] bg-[#020204] transition-all duration-200 ${
-            logsExpanded ? "h-44" : "h-8"
+            logsExpanded ? "h-48" : "h-8"
           }`}
         >
           <div className="flex h-8 items-center justify-between px-3 font-mono text-[11px]">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5">
-              <span className="flex items-center gap-1.5 text-[#4ade80]">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex shrink-0 items-center gap-1.5 text-[#4ade80]">
                 <Terminal className="h-3.5 w-3.5" />
-                <span className="font-bold">CONSOLA DE AGENTES</span>
+                <span className="font-bold">SUB-AGENTES</span>
               </span>
               <span className="text-slate-600">|</span>
               <span className="shrink-0 text-slate-500">{latestLog.time}</span>
               <span
-                className={`shrink-0 font-bold ${
-                  latestLog.level === "green"
-                    ? "text-[#4ade80]"
-                    : latestLog.level === "mustard"
-                    ? "text-[#eab308]"
-                    : "text-[#22d3ee]"
+                className={`shrink-0 rounded border px-1.5 py-0.2 text-[9px] font-bold ${
+                  SUB_AGENT_SPECS[latestLog.agent]?.badgeClass ??
+                  "border-[#22d3ee]/40 bg-[#22d3ee]/10 text-[#22d3ee]"
                 }`}
               >
-                {latestLog.agent}:
+                {latestLog.agent} • {SUB_AGENT_SPECS[latestLog.agent]?.roleTitle ?? "Agente"}
               </span>
-              <span className="truncate text-slate-400">{latestLog.message}</span>
+              <span className="truncate text-slate-300">{latestLog.message}</span>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
+              {/* Filtros rápidos por Sub-Agente (Directiva V6) */}
+              <div className="hidden items-center gap-1 lg:flex">
+                {(["ALL", "KRONOS", "ORION", "HERMES", "CORTEX"] as const).map((ag) => (
+                  <button
+                    key={ag}
+                    type="button"
+                    onClick={() => {
+                      setAgentFilter(ag);
+                      if (ag !== "ALL") setLogsExpanded(true);
+                    }}
+                    className={`rounded border px-1.5 py-0.5 text-[9px] font-bold transition ${
+                      agentFilter === ag
+                        ? "border-[#4ade80]/50 bg-[#4ade80]/15 text-[#4ade80]"
+                        : "border-[#1f222d] bg-[#0a0b10] text-slate-500 hover:text-slate-200"
+                    }`}
+                  >
+                    {ag === "ALL" ? "TODOS" : ag}
+                  </button>
+                ))}
+              </div>
+
               <button
                 type="button"
                 onClick={() => setLogsPaused(!logsPaused)}
@@ -609,25 +665,31 @@ export default function TradeBreinMasterApp() {
           {logsExpanded && (
             <div
               ref={consoleScrollRef}
-              className="h-36 space-y-1 overflow-y-auto border-t border-[#1f222d]/60 px-3 py-1.5 font-mono text-[11px] scroll-smooth"
+              className="h-40 space-y-1 overflow-y-auto border-t border-[#1f222d]/60 px-3 py-1.5 font-mono text-[11px] scroll-smooth"
             >
-              {logs.map((entry) => (
-                <div key={entry.id} className="flex items-center gap-2 leading-tight">
-                  <span className="text-slate-600">{entry.time}</span>
-                  <span
-                    className={`w-20 shrink-0 font-bold ${
-                      entry.level === "green"
-                        ? "text-[#4ade80]"
-                        : entry.level === "mustard"
-                        ? "text-[#eab308]"
-                        : "text-[#22d3ee]"
-                    }`}
-                  >
-                    [{entry.agent}]
-                  </span>
-                  <span className="text-slate-400">{entry.message}</span>
-                </div>
-              ))}
+              {logs
+                .filter((entry) =>
+                  agentFilter === "ALL"
+                    ? true
+                    : agentFilter === "HERMES"
+                    ? entry.agent === "HERMES" || entry.agent === "FINBERT"
+                    : entry.agent === agentFilter
+                )
+                .map((entry) => {
+                  const spec = SUB_AGENT_SPECS[entry.agent] ?? SUB_AGENT_SPECS.ORION;
+                  return (
+                    <div key={entry.id} className="flex items-center gap-2 leading-tight">
+                      <span className="shrink-0 text-slate-600">{entry.time}</span>
+                      <span
+                        className={`w-44 shrink-0 truncate rounded border px-1.5 py-0.2 text-[9px] font-bold ${spec.badgeClass}`}
+                        title={spec.specialty}
+                      >
+                        [{spec.id} • {spec.roleTitle}]
+                      </span>
+                      <span className="text-slate-300">{entry.message}</span>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </footer>
